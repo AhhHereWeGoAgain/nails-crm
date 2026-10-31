@@ -5,6 +5,7 @@
   const tax = entry => entry.kind === 'income' ? Math.round(entry.amount * Number(entry.taxRate || 0) / 100) : 0;
   function totals(entries) {
     return entries.reduce((result, e) => {
+      if (e.status && e.status !== 'completed') return result;
       if (e.kind === 'income') { result.income += e.amount; result.tax += tax(e); }
       else result.expenses += e.amount;
       result.profit = result.income - result.expenses - result.tax;

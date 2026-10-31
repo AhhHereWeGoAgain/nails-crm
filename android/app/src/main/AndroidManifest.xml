@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="false" android:usesCleartextTraffic="false" android:label="Nails CRM" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:icon="@android:drawable/ic_menu_my_calendar">
+    <application android:allowBackup="false" android:usesCleartextTraffic="false" android:label="Nails CRM" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:icon="@drawable/ic_nails_crm">
         <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="unspecified">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

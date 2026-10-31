@@ -12,3 +12,12 @@ assert.deepEqual(totals(monthEntries(entries,2026,9)), {income:300002,expenses:7
 assert.equal(recentRent(entries,'rent'),70000);
 assert.ok(money(10000).includes('100'));
 console.log('Core calculations: OK');
+const stages = [
+  {id:'pending',kind:'income',amount:80000,taxRate:4,status:'planned'},
+  {id:'progress',kind:'expense',amount:30000,status:'in_progress'},
+  {id:'finished',kind:'income',amount:120000,taxRate:4,status:'completed'},
+  {id:'cancelled',kind:'expense',amount:4000,status:'cancelled'},
+];
+assert.deepEqual(totals(stages),{income:120000,expenses:0,tax:4800,profit:115200});
+assert.deepEqual(totals([...stages,{id:'legacy',kind:'income',amount:60000,taxRate:0}]),{income:180000,expenses:0,tax:4800,profit:175200});
+console.log('Deal status accounting: OK');
