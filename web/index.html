@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f7fba" />
+  <meta name="theme-color" content="#152940" />
   <meta name="description" content="Локальный календарь клиентов, доходов, налогов и расходов мастера" />
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" id="favicon" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./design-2026.css" />
   <title>Nails CRM — финансы и календарь</title>
 </head>
 <body>
@@ -26,8 +27,8 @@
 
     <main class="main">
       <header class="topbar">
-        <div><p class="eyebrow">НАВИГАЦИЯ / <span id="breadcrumb">КАЛЕНДАРЬ</span></p><h1 id="page-title">Календарь</h1></div>
-        <button class="btn btn-primary" id="add-entry"><span data-icon="plus"></span> Создать сделку</button>
+        <div><p class="eyebrow">Рабочее пространство <span class="crumb-sep">/</span> <span id="breadcrumb">Календарь</span></p><h1 id="page-title">Календарь</h1></div>
+        <button class="btn btn-primary" id="add-entry"><span data-icon="plus"></span><span>Новая сделка</span></button>
       </header>
       <div id="message" class="toast" role="status" aria-live="polite" hidden></div>
       <section id="calendar-page" class="page">
@@ -45,7 +46,7 @@
             <div id="calendar-grid" class="calendar-grid" role="grid" aria-label="Дни месяца"></div>
           </section>
           <section class="panel day-panel" aria-label="Сделки за день">
-            <div class="day-panel-heading"><div><span class="overline">ВЫБРАННАЯ ДАТА</span><h2 id="selected-day-heading">Сегодня</h2><p class="muted" id="day-subtitle">Сделки за день</p></div><button class="small-plus" id="add-on-day" aria-label="Создать сделку"><span data-icon="plus"></span></button></div>
+            <div class="day-panel-heading"><div><span class="overline">Расписание на день</span><h2 id="selected-day-heading">Сегодня</h2><p class="muted" id="day-subtitle">Сделки за день</p></div><button type="button" class="btn btn-outline day-add-action" id="add-on-day"><span data-icon="plus"></span><span>Добавить</span></button></div>
             <div id="day-totals" class="day-totals"></div>
             <div id="day-list" class="day-list"></div>
           </section>
@@ -67,7 +68,7 @@
         <div class="reports-grid"><section class="panel analytics-panel"><h3>Результат по месяцам</h3><div id="monthly-bars" class="monthly-bars"></div></section><section class="panel analytics-panel"><h3>Структура расходов</h3><div id="expense-breakdown" class="breakdown"></div></section></div>
       </section>
       <section id="clients-page" class="page" hidden>
-        <div class="section-head"><div><h2>База клиентов</h2><p class="muted">Контакты, источники и история посещений</p></div><button type="button" class="btn btn-primary" id="add-client">＋ Клиент</button></div>
+        <div class="section-head"><div><h2>База клиентов</h2><p class="muted">Контакты, источники и история посещений</p></div><button type="button" class="btn btn-primary" id="add-client"><span data-icon="plus"></span> Новый клиент</button></div>
         <section class="panel clients-panel"><label class="sr-only" for="client-search">Поиск клиента</label><input type="search" id="client-search" placeholder="Поиск по имени или телефону" autocomplete="off" /><p class="muted tiny" id="clients-count"></p><div id="clients-list" class="clients-list"></div></section>
       </section>
       <section id="settings-page" class="page" hidden>
@@ -82,10 +83,10 @@
 
   <dialog id="entry-dialog" aria-labelledby="dialog-title">
     <form id="entry-form" class="entry-form">
-      <div class="dialog-head"><div><span class="overline">CRM / СДЕЛКА</span><h2 id="dialog-title">Новая сделка</h2></div><button type="button" class="close-btn" id="close-dialog" aria-label="Закрыть"><span data-icon="x"></span></button></div>
+      <div class="dialog-head"><div><span class="overline">Сделка</span><h2 id="dialog-title">Новая сделка</h2></div><button type="button" class="close-btn" id="close-dialog" aria-label="Закрыть"><span data-icon="x"></span></button></div>
       <div class="type-switch" role="group" aria-label="Тип сделки"><button type="button" data-kind="income" class="active">Клиент / Доход</button><button type="button" data-kind="expense">Расход</button></div>
       <label>Дата<input name="date" id="entry-date" required type="date" /></label><label>Стадия сделки<select id="entry-status"><option value="planned">Запланировано</option><option value="in_progress">В работе</option><option value="completed">Завершено</option><option value="cancelled">Отменено</option></select></label>
-      <div id="income-fields"><div class="form-with-action"><label>Клиент<select id="entry-client" required></select></label><button type="button" class="btn btn-outline" id="quick-add-client">＋ Новый</button></div><label>Время записи <span class="muted">(необязательно)</span><input id="entry-time" type="time" /></label><label>Налоговый режим<select id="tax-select" name="taxSelect"><option value="4">Самозанятость — 4%</option><option value="6">Самозанятость — 6%</option><option value="0">Без налога — 0%</option><option value="custom">Другая ставка</option></select></label><label id="custom-tax-wrap" hidden>Ставка налога, %<input id="custom-tax" min="0" max="100" step="0.01" type="number" inputmode="decimal" placeholder="Например, 5" /></label></div>
+      <div id="income-fields"><div class="form-with-action"><label>Клиент<select id="entry-client" required></select></label><button type="button" class="btn btn-outline" id="quick-add-client"><span data-icon="plus"></span> Новый</button></div><label>Время записи <span class="muted">(необязательно)</span><input id="entry-time" type="time" /></label><label>Налоговый режим<select id="tax-select" name="taxSelect"><option value="4">Самозанятость — 4%</option><option value="6">Самозанятость — 6%</option><option value="0">Без налога — 0%</option><option value="custom">Другая ставка</option></select></label><label id="custom-tax-wrap" hidden>Ставка налога, %<input id="custom-tax" min="0" max="100" step="0.01" type="number" inputmode="decimal" placeholder="Например, 5" /></label></div>
       <div id="expense-fields" hidden><label>Статья расходов<select id="entry-category"></select></label><div id="rent-preset" class="rent-preset" hidden><div><span class="muted">Прошлая сумма аренды</span><strong id="last-rent">—</strong></div><button type="button" id="use-last-rent" class="btn btn-outline">Использовать</button></div></div>
       <label>Сумма, ₽<input name="amount" id="entry-amount" type="number" min="0.01" max="10000000000" step="0.01" inputmode="decimal" required placeholder="0,00" /></label>
       <label>Комментарий <span class="muted">(необязательно)</span><textarea name="note" id="entry-note" maxlength="1000" rows="2" placeholder="Например, маникюр с покрытием"></textarea></label>
@@ -95,7 +96,7 @@
   </dialog>
   <dialog id="client-dialog" aria-labelledby="client-dialog-title">
     <form id="client-form" class="entry-form">
-      <div class="dialog-head"><div><span class="overline">БАЗА КЛИЕНТОВ</span><h2 id="client-dialog-title">Новый клиент</h2></div><button type="button" class="close-btn" id="close-client-dialog" aria-label="Закрыть">×</button></div>
+      <div class="dialog-head"><div><span class="overline">Клиенты</span><h2 id="client-dialog-title">Новый клиент</h2></div><button type="button" class="close-btn" id="close-client-dialog" aria-label="Закрыть"><span data-icon="x"></span></button></div>
       <label>Имя клиента<input id="client-name" maxlength="240" required autocomplete="name" placeholder="Например, Анна" /></label>
       <label>Телефон <span class="muted">(необязательно)</span><input id="client-phone" maxlength="40" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67" /></label>
       <label>Откуда пришёл клиент<select id="client-source"></select></label>
@@ -104,7 +105,7 @@
       <div class="dialog-actions"><button class="btn btn-ghost" type="button" id="cancel-client">Отмена</button><button class="btn btn-primary" type="submit" id="save-client">Сохранить клиента</button></div>
     </form>
   </dialog>
-  <dialog id="history-dialog" aria-labelledby="history-title"><div class="entry-form"><div class="dialog-head"><h2 id="history-title">Посещения</h2><button type="button" id="close-history" class="close-btn" aria-label="Закрыть">×</button></div><div id="client-history"></div><button type="button" class="btn btn-outline" id="history-done">Закрыть</button></div></dialog>
+  <dialog id="history-dialog" aria-labelledby="history-title"><div class="entry-form"><div class="dialog-head"><h2 id="history-title">Посещения</h2><button type="button" id="close-history" class="close-btn" aria-label="Закрыть"><span data-icon="x"></span></button></div><div id="client-history"></div><button type="button" class="btn btn-outline" id="history-done">Закрыть</button></div></dialog>
   <script src="./icons.js"></script>
   <script src="./core.js"></script>
   <script src="./app.js" defer></script>
