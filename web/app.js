@@ -196,7 +196,7 @@
       const entries = buckets.get(key) || [];
       const daily = C.totals(entries);
       const display = v => '<span class="' + (v > 0 ? 'income' : 'expense') + '">' + (v > 0 ? '+' : '−') + money(Math.abs(v)) + '</span>';
-      cells.push(`<button type="button" role="gridcell" data-date="${key}" aria-label="${safe(longDate(key))}, сделок: ${entries.length}, создать сделку" aria-selected="${key===selectedDate}" class="calendar-day${outside?' outside':''}${key===selectedDate?' selected':''}${key===todayKey?' today':''}"><span class="day-number">${dt.getDate()}</span><span class="day-values">${daily.income ? display(daily.income) : ''}${daily.expenses ? display(-daily.expenses):''}</span>${entries.length?`<span class="day-count">${entries.length} ${plural(entries.length,'сделка','сделки','сделок')}</span>`:''}<span class="cell-add" aria-hidden="true">${icon('plus',13)}</span></button>`);
+      cells.push(`<button type="button" role="gridcell" data-date="${key}" aria-label="${safe(longDate(key))}, сделок: ${entries.length}. Открыть создание сделки" aria-selected="${key===selectedDate}" class="calendar-day${outside?' outside':''}${key===selectedDate?' selected':''}${key===todayKey?' today':''}"><span class="day-number">${dt.getDate()}</span><span class="day-values">${daily.income ? display(daily.income) : ''}${daily.expenses ? display(-daily.expenses):''}</span>${entries.length?`<span class="day-count">${entries.length} ${plural(entries.length,'сделка','сделки','сделок')}</span>`:''}</button>`);
     }
     $('calendar-grid').innerHTML = cells.join('');
     $('selected-day-heading').textContent = longDate(selectedDate);
@@ -235,7 +235,7 @@
             <div class="kanban-card-footer"><strong class="kanban-price">${money(e.amount)}</strong><button type="button" data-kanban-edit="${safe(e.id)}" aria-label="Редактировать сделку">${icon('pencil',16)}</button></div>
             <label class="kanban-status-label">Стадия <select data-deal-status="${safe(e.id)}" aria-label="Стадия сделки ${safe(income?e.name:category(e.categoryId))}">${DEAL_STAGES.map(opt=>`<option value="${opt.id}" ${opt.id===stage.id?'selected':''}>${safe(opt.title)}</option>`).join('')}</select></label>
           </article>`;}).join(''):'<p class="kanban-empty">Здесь пока нет сделок</p>'}</div>
-        <button class="kanban-create" type="button" data-create-stage="${stage.id}">${icon('plus',16)} Добавить сделку</button>
+        <button class="kanban-create" type="button" data-create-stage="${stage.id}">${icon('plus',16)} <span>Добавить сделку</span></button>
       </section>`;
     }).join('');
   }
