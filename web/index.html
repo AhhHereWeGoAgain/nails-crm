@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#faf8f7" />
+  <meta name="description" content="Локальный календарь клиентов, доходов, налогов и расходов мастера" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" id="favicon" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>Nails CRM — финансы и календарь</title>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">✦</div><div><strong>Nails CRM</strong><small>Личный кабинет мастера</small></div></div>
+      <nav aria-label="Навигация" class="nav">
+        <button type="button" class="nav-link active" data-page="calendar"><span aria-hidden="true">▦</span> Календарь</button>
+        <button type="button" class="nav-link" data-page="reports"><span aria-hidden="true">◫</span> Финансы</button>
+        <button type="button" class="nav-link" data-page="settings"><span aria-hidden="true">⚙</span> Настройки</button>
+      </nav>
+      <div class="side-note"><div class="status-line"><span class="status-dot"></span><span id="connection-label">Загрузка…</span></div><p>Все данные хранятся локально. Облако не требуется.</p></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><p class="eyebrow">ВАШЕ ПРОСТРАНСТВО</p><h1 id="page-title">Календарь</h1></div>
+        <button class="btn btn-primary" id="add-entry"><span class="plus">＋</span> Новая операция</button>
+      </header>
+      <div id="message" class="toast" role="status" aria-live="polite" hidden></div>
+      <section id="calendar-page" class="page">
+        <div class="section-head"><div><h2>Обзор за месяц</h2><p class="muted">Все поступления и расходы в одном месте</p></div><button id="current-month" class="btn btn-ghost">Сегодня</button></div>
+        <section class="metrics" aria-label="Финансовые показатели за месяц">
+          <article class="metric"><span class="metric-label">Выручка</span><strong id="metric-income">0 ₽</strong><span class="metric-foot good">Все клиенты за месяц</span></article>
+          <article class="metric"><span class="metric-label">Расходы</span><strong id="metric-expenses">0 ₽</strong><span class="metric-foot">Закупки, аренда и другое</span></article>
+          <article class="metric"><span class="metric-label">Налог</span><strong id="metric-tax">0 ₽</strong><span class="metric-foot">По ставкам клиентов</span></article>
+          <article class="metric metric-profit"><span class="metric-label">Чистый результат</span><strong id="metric-profit">0 ₽</strong><span class="metric-foot">Выручка − налог − расходы</span></article>
+        </section>
+        <div class="calendar-layout">
+          <section class="panel calendar-panel" aria-label="Календарь">
+            <div class="calendar-toolbar"><div class="month-switch"><button id="prev-month" class="icon-btn" aria-label="Предыдущий месяц">‹</button><h2 id="month-label">Месяц</h2><button id="next-month" class="icon-btn" aria-label="Следующий месяц">›</button></div><span class="calendar-legend"><i class="dot-income"></i> Доход <i class="dot-expense"></i> Расход</span></div>
+            <div class="weekdays" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+            <div id="calendar-grid" class="calendar-grid" role="grid" aria-label="Дни месяца"></div>
+          </section>
+          <section class="panel day-panel" aria-label="Операции за день">
+            <div class="day-panel-heading"><div><span class="overline">ВЫБРАННАЯ ДАТА</span><h2 id="selected-day-heading">Сегодня</h2><p class="muted" id="day-subtitle">Операции за день</p></div><button class="small-plus" id="add-on-day" aria-label="Добавить операцию">＋</button></div>
+            <div id="day-totals" class="day-totals"></div>
+            <div id="day-list" class="day-list"></div>
+          </section>
+        </div>
+      </section>
+      <section id="reports-page" class="page" hidden>
+        <div class="section-head"><div><h2>Финансовая аналитика</h2><p class="muted">Доход, расходы и заработок по месяцам</p></div><label class="select-wrap">Год <select id="report-year"></select></label></div>
+        <section class="metrics"><article class="metric"><span class="metric-label">Выручка за год</span><strong id="year-income">0 ₽</strong></article><article class="metric"><span class="metric-label">Расходы за год</span><strong id="year-expenses">0 ₽</strong></article><article class="metric"><span class="metric-label">Налоги за год</span><strong id="year-tax">0 ₽</strong></article><article class="metric metric-profit"><span class="metric-label">Чистый результат</span><strong id="year-profit">0 ₽</strong></article></section>
+        <div class="reports-grid"><section class="panel analytics-panel"><h3>Результат по месяцам</h3><div id="monthly-bars" class="monthly-bars"></div></section><section class="panel analytics-panel"><h3>Структура расходов</h3><div id="expense-breakdown" class="breakdown"></div></section></div>
+      </section>
+      <section id="settings-page" class="page" hidden>
+        <div class="section-head"><div><h2>Статьи расходов</h2><p class="muted">Удалить статью можно, если по ней нет записей</p></div></div>
+        <div class="reports-grid"><section class="panel settings-panel"><form id="category-form" class="category-form"><label class="sr-only" for="category-name">Новая статья расходов</label><input id="category-name" maxlength="50" required placeholder="Например, реклама" /><button class="btn btn-primary" type="submit">Добавить</button></form><div id="category-list" class="category-list"></div></section>
+        <section class="panel settings-panel"><h3>Резервная копия</h3><p class="muted">Сохраняйте файл на своём устройстве. Резервная копия содержит имена клиентов и суммы.</p><div class="setting-buttons"><button id="export-data" class="btn btn-outline">Скачать JSON</button><label class="btn btn-outline file-label">Загрузить JSON<input id="import-data" type="file" accept=".json,application/json" hidden /></label></div><p class="tiny muted">При импорте текущая база заменяется содержимым файла. Для серверной версии дополнительно копируйте файл SQLite.</p></section></div>
+      </section>
+    </main>
+    <nav class="bottom-nav" aria-label="Навигация на телефоне"><button data-page="calendar" class="active">▦<span>Календарь</span></button><button data-page="reports">◫<span>Финансы</span></button><button data-page="settings">⚙<span>Настройки</span></button></nav>
+  </div>
+
+  <dialog id="entry-dialog" aria-labelledby="dialog-title">
+    <form id="entry-form" class="entry-form">
+      <div class="dialog-head"><div><span class="overline">УЧЁТ ФИНАНСОВ</span><h2 id="dialog-title">Новая операция</h2></div><button type="button" class="close-btn" id="close-dialog" aria-label="Закрыть">×</button></div>
+      <div class="type-switch" role="group" aria-label="Тип операции"><button type="button" data-kind="income" class="active">Клиент / Доход</button><button type="button" data-kind="expense">Расход</button></div>
+      <label>Дата<input name="date" id="entry-date" required type="date" /></label>
+      <div id="income-fields"><label>Имя клиента<input name="name" id="entry-name" maxlength="240" placeholder="Например, Анна" autocomplete="off" /></label><label>Налоговый режим<select id="tax-select" name="taxSelect"><option value="4">Самозанятость — 4%</option><option value="6">Самозанятость — 6%</option><option value="0">Без налога — 0%</option><option value="custom">Другая ставка</option></select></label><label id="custom-tax-wrap" hidden>Ставка налога, %<input id="custom-tax" min="0" max="100" step="0.01" type="number" inputmode="decimal" placeholder="Например, 5" /></label></div>
+      <div id="expense-fields" hidden><label>Статья расходов<select id="entry-category"></select></label><div id="rent-preset" class="rent-preset" hidden><div><span class="muted">Прошлая сумма аренды</span><strong id="last-rent">—</strong></div><button type="button" id="use-last-rent" class="btn btn-outline">Использовать</button></div></div>
+      <label>Сумма, ₽<input name="amount" id="entry-amount" type="number" min="0.01" max="10000000000" step="0.01" inputmode="decimal" required placeholder="0,00" /></label>
+      <label>Комментарий <span class="muted">(необязательно)</span><textarea name="note" id="entry-note" maxlength="1000" rows="2" placeholder="Например, маникюр с покрытием"></textarea></label>
+      <div id="tax-preview" class="tax-preview">Налог: <strong id="preview-tax">0 ₽</strong> <span class="muted">·</span> После налога: <strong id="preview-net">0 ₽</strong></div>
+      <div class="dialog-actions"><button type="button" class="btn btn-ghost" id="cancel-entry">Отмена</button><button type="submit" class="btn btn-primary" id="save-entry">Сохранить</button></div>
+    </form>
+  </dialog>
+  <script src="./core.js"></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>

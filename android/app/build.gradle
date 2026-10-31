@@ -1,0 +1,21 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.nailscrm.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.nailscrm.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    // Same web UI source is embedded in the APK; no extra copied assets.
+    sourceSets { main { assets.srcDirs += [file('../../web')] } }
+}
+
+dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
