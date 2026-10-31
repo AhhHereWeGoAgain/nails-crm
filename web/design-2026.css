@@ -1,0 +1,255 @@
+/* Nails CRM · Studio Desk visual language (2026)
+   Informed by Anthropic Frontend Design and UI/UX Pro Max: deliberate
+   typography, clarity, accessibility, one action hierarchy. No CDN.
+*/
+:root {
+  --canvas:#f5f7fa;
+  --surface:#ffffff;
+  --surface-soft:#f9fbfd;
+  --border:#e2e8ef;
+  --ink:#1e3044;
+  --muted:#66798b;
+  --accent:#1263cd;
+  --accent-dark:#0d4da5;
+  --focus:#2780ec;
+  --mint:#17846c;
+  --amber:#b87519;
+  --sidebar:#172e47;
+  --sidebar-deep:#12273e;
+  --radius:12px;
+  --shadow:0 3px 14px rgba(24,51,77,.045);
+  font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  color:var(--ink);
+  background:var(--canvas);
+}
+body {color:var(--ink);background:var(--canvas);font-size:14px;line-height:1.48}
+button, input, textarea, select {font-family:inherit}
+button {touch-action:manipulation}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible {
+  outline:3px solid #5b9cf7;outline-offset:2px;
+}
+/* Navigation is deliberately restrained, with a quiet studio accent. */
+.sidebar {
+  flex-basis:232px;padding:29px 14px 22px;
+  background:var(--sidebar);border:0;box-shadow:none;
+}
+.brand {padding:2px 10px 33px;gap:12px}
+.brand-mark {
+  width:44px;height:44px;border:1px solid #91c3f33c;
+  background:#ffffff13;border-radius:12px;color:#a9e1ff;
+}
+.brand strong {font-size:18px;font-weight:760;letter-spacing:-.45px}
+.brand small {font-size:11px;color:#b7cadd}
+.nav {gap:5px}
+.nav-link {min-height:46px;padding:11px 13px;font-size:14px;font-weight:560;
+  border-radius:9px;color:#cfdbeb;gap:12px;transition:background-color .15s,color .15s}
+.nav-link svg {width:19px;height:19px}
+.nav-link:hover {background:#ffffff13;color:#fff}
+.nav-link.active,.nav-link.active:hover {color:#fff;background:#2b506e;box-shadow:inset 3px 0 #89d7fa}
+.side-note {background:var(--sidebar-deep);border:1px solid #31526b;border-radius:11px}
+.status-line {font-size:12px;color:#e2eaf4}.side-note p {color:#aebfd0;font-size:11px}
+.status-dot {background:#65d4aa;box-shadow:none}
+/* Content layout */
+.main {max-width:1780px;padding:28px 36px 90px}
+.topbar {padding-bottom:23px;margin-bottom:26px;border-bottom:1px solid var(--border);align-items:center}
+.topbar h1 {font-size:29px;line-height:1.2;letter-spacing:-.85px;font-weight:750;color:var(--ink)}
+.eyebrow {margin:0 0 7px;font-size:12px;letter-spacing:0;color:#75899a;font-weight:520;text-transform:none}
+#breadcrumb {color:#3d6287;text-transform:none}.crumb-sep {color:#bccbd6;margin:0 5px}
+.overline {letter-spacing:0;font-size:12px;font-weight:650;color:#718698;text-transform:none}
+.section-head {margin-bottom:17px}.section-head h2 {font-size:19px;color:#23364b;font-weight:730;letter-spacing:-.4px}
+.section-head p {font-size:13px;color:var(--muted);margin-top:5px}
+.muted {color:var(--muted)}
+/* Actions: never rely on a disconnected/floating plus glyph. */
+.btn {height:43px;min-height:43px;border-radius:9px;display:inline-flex;align-items:center;
+  justify-content:center;vertical-align:middle;gap:9px;padding:0 17px;font-size:13px;font-weight:650;
+  line-height:1.2;letter-spacing:0;white-space:nowrap;box-shadow:none;transition:background-color .16s,border-color .16s,color .16s}
+.btn svg,.icon-btn svg,.close-btn svg,.kanban-create svg,.nav-link svg {display:block;flex-shrink:0}
+.btn-primary {background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:none}
+.btn-primary:hover {background:var(--accent-dark);border-color:var(--accent-dark);box-shadow:none}
+.btn-outline {color:#205a93;background:#fff;border-color:#d2dfe9}
+.btn-outline:hover {color:#0e52a2;background:#f2f7fc;border-color:#b5cbdf}
+.btn-ghost {background:#fff;color:#35546c;border-color:#dae3eb}
+.btn-ghost:hover {background:#f5f8fc;border-color:#c4d6e5}
+.icon-btn,.close-btn {width:42px;height:42px;min-width:42px;min-height:42px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0;
+  background:#fff;color:#52738c;border:1px solid #dce6ef;border-radius:9px;font-size:16px}
+.icon-btn:hover,.close-btn:hover {color:var(--accent);background:#eff6fd}
+.topbar>.btn {height:45px;font-size:13px;padding-inline:18px}
+.panel,.metric {background:#fff;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)}
+/* Finance summary */
+.metrics {gap:13px;margin-bottom:20px}
+.metric {position:relative;padding:20px 20px 21px;min-height:128px;overflow:hidden}
+.metric::before {content:"";position:absolute;top:0;left:0;right:0;height:3px;background:#bed2e1}
+.metric:nth-child(1)::before {background:#2aa9ce}
+.metric:nth-child(2)::before {background:#e9af56}
+.metric:nth-child(3)::before {background:#91a5bb}
+.metric:nth-child(4)::before {background:#39b494}
+.metric-label {font-size:13px;font-weight:600;color:#65798b}
+.metric strong {font-size:26px;font-weight:750;letter-spacing:-.7px;color:#20364c;line-height:1.2}
+.metric-foot {font-size:11px;color:#8292a0}.metric-foot.good {color:#147b68}
+.metric-profit {background:#f3fbf8;border-color:#d2e8df}
+.metric-profit strong {color:#0b6a55}
+/* Calendar as the central action, not an illustration. Entire date is clickable. */
+.calendar-layout {grid-template-columns:minmax(0,1.67fr) minmax(302px, .94fr);gap:17px}
+.calendar-panel {padding:23px 22px 20px}
+.calendar-toolbar {margin-bottom:23px}
+.month-switch {gap:5px}
+.month-switch h2 {min-width:169px;font-size:19px;font-weight:720;color:#233a51;letter-spacing:-.4px}
+.calendar-legend {font-size:12px;color:#697f92;gap:7px}
+.weekdays {color:#788c9c;font-size:12px;font-weight:650;padding-bottom:12px}
+.calendar-grid {border-top:1px solid #e5ebf1;border-left:1px solid #e5ebf1;border-radius:8px;overflow:hidden}
+.calendar-day {min-height:94px;padding:9px 8px;gap:6px;border-right:1px solid #e5ebf1;
+  border-bottom:1px solid #e5ebf1;background:#fff;transition:background-color .13s}
+.calendar-day:hover {background:#eff7fe}
+.calendar-day.selected {background:#eaf3ff;box-shadow:inset 0 0 0 2px #327fdf;z-index:1}
+.calendar-day.outside {opacity:1;background:#fafbfd}
+.calendar-day.outside .day-number {color:#a2b0bd}
+.calendar-day.today .day-number {background:#185da9;color:#fff}
+.day-number {font-size:13px;color:#29445b;font-weight:690;width:25px;height:25px}
+.day-values {gap:3px}.day-values span {font-size:11px;line-height:1.3;font-weight:690}
+.day-values .income {color:#187963}.day-values .expense {color:#a56a23}
+.day-count {font-size:11px;color:#768da0}
+.cell-add {display:none!important} /* no hover-only floating glyph */
+/* Selected day: explicit, anchored action instead of stray + square. */
+.day-panel {padding:23px 22px;min-height:350px}
+.day-panel-heading {align-items:flex-start;gap:10px}
+.day-panel-heading h2 {font-size:20px;line-height:1.25;margin:9px 0 6px;letter-spacing:-.45px}
+.day-panel-heading .muted {font-size:12px}
+.day-add-action {height:40px;min-height:40px;padding:0 12px;margin-top:3px;flex-shrink:0;font-size:12px}
+.day-add-action svg {height:16px;width:16px}
+.day-totals {margin:22px 0 20px;gap:9px;padding-bottom:18px;border-color:#e9edf1}
+.day-totals div {background:#f4f7fa;border-radius:8px;padding:12px}
+.day-totals span {font-size:11px;color:#718598}
+.day-totals strong {font-size:17px;color:#1d354a}
+.day-list {gap:10px}.entry-card {padding:12px;gap:10px;border-color:#e2e9ef;border-radius:10px}
+.entry-desc strong {font-size:13px}.entry-desc small {font-size:11px;color:#738699}
+.entry-amount {font-size:13px}
+.entry-actions {gap:4px}.entry-actions button {width:35px;height:35px;min-width:35px;
+  display:inline-flex;align-items:center;justify-content:center;border-radius:7px}
+.entry-actions button:hover {background:#eff5fa}
+.entry-icon {border-radius:9px}.appointment-time {background:#e5f2ff;color:#145d9e}
+/* Kanban: no giant dashed boxes or centered plus indicators. */
+.deals-toolbar {padding:13px 15px;border-radius:11px}
+.deal-filters button {height:39px;min-height:39px;padding:0 15px;font-size:13px;border-radius:7px}
+.deal-filters button.active {background:#e8f2fc;color:#0e59ad}
+.deals-search {height:43px;border-color:#dce6ee}.deals-search input {font-size:13px}
+.deals-summary {margin-bottom:17px}.deals-summary>div {border-radius:8px;font-size:12px;padding:10px 14px}
+.kanban-board {gap:14px}
+.kanban-column {background:#f1f5f9;border:1px solid #e1e8f0;border-top:4px solid #d3dfed;
+  border-radius:11px;min-height:420px;gap:12px;padding:12px}
+.stage-column-planned {border-top-color:#488ed1}
+.stage-column-in_progress {border-top-color:#e2aa54}
+.stage-column-completed {border-top-color:#45ad90}
+.stage-column-cancelled {border-top-color:#a9b5c0}
+.kanban-column-head {padding:6px 5px 10px;border-bottom:1px solid #e1e8ef}
+.kanban-title {color:#263e51}.kanban-title strong {font-size:13px;font-weight:710}
+.kanban-total {padding-left:26px;font-size:13px;color:#718698}
+.kanban-count {background:#fff;padding:3px 8px;color:#526d82}
+.kanban-card {padding:15px;background:#fff;border:1px solid #dfe8f0;
+  border-radius:9px;box-shadow:0 2px 7px rgba(27,59,87,.04)}
+.kanban-card-title {font-size:14px;color:#1e3347}
+.kanban-card-meta {font-size:12px;color:#677e90}
+.kanban-card-footer {border-color:#e5ebf1}
+.kanban-price {font-size:18px;color:#1e3347}
+.kanban-card-footer button {min-width:38px;min-height:38px;display:flex;align-items:center;justify-content:center;border-radius:7px}
+.kanban-card-footer button:hover {background:#eef6fe}
+.kanban-status-label {font-size:12px}
+.kanban-status-label select {font-size:12px;min-height:38px}
+.kanban-create {width:100%;height:44px;min-height:44px;display:flex;
+  align-items:center;justify-content:flex-start;gap:8px;padding:0 10px;
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  color:#205b97;font-size:13px;font-weight:620;text-align:left}
+.kanban-create:hover {background:#e5eef8;border-color:#d0e0ee;color:#0d5097}
+.kanban-create svg {width:18px;height:18px;flex:none}
+.kanban-empty {font-size:12px;line-height:1.5;color:#8296a7;padding:23px 4px}
+/* Clients, settings and forms follow the same component vocabulary. */
+.clients-panel,.analytics-panel,.settings-panel {padding:23px}
+.client-card {border-radius:10px;border-color:#e5ebf1;padding:14px}
+.client-avatar {background:#eaf2ff;color:#17589f}
+.client-info strong {font-size:14px}.client-info small {font-size:12px;color:#637b8e}
+.client-actions {gap:6px}
+.client-actions .btn {height:39px;min-height:39px}
+.category-item {border-color:#e1e8ef;border-radius:9px;font-size:13px;padding:11px 13px;gap:10px}
+.category-item button {min-height:36px;padding:0 9px;color:#245b96}
+.category-form input {min-height:43px}
+input,select,textarea {font-size:14px;color:var(--ink);border-color:#cfdae4}
+input:focus,select:focus,textarea:focus {border-color:var(--focus);box-shadow:0 0 0 3px #207ce927}
+label {font-size:13px;color:#3d5368}
+dialog {border-radius:14px;border-color:#dce7ee;box-shadow:0 22px 70px #172d4042}
+dialog::backdrop {background:#132b426b;backdrop-filter:blur(2px)}
+.dialog-head h2 {font-size:21px;color:#213b51}
+.close-btn {background:#f4f7fa;border-color:transparent}
+.type-switch {background:#edf2f7}
+.type-switch button {min-height:40px;font-size:13px;color:#587084}
+.type-switch button.active {background:#fff;color:#175cae;box-shadow:0 1px 5px #263e521f}
+.rent-preset {background:#f4f8fc;border-color:#dce7ee}
+.tax-preview {background:#eef6fd;color:#4b6477}
+.toast {background:#223b53;border-radius:10px}
+/* Responsiveness and touch targets: preserve calendar legibility. */
+@media (max-width:1280px) {
+  .main {padding-inline:23px}
+  .calendar-layout {grid-template-columns:minmax(0,1.4fr) minmax(275px,1fr)}
+  .calendar-day {min-height:86px;padding:8px 5px}
+  .metric {padding-inline:15px}
+}
+@media (max-width:850px) {
+  .main {padding:22px 16px calc(100px + env(safe-area-inset-bottom))}
+  .calendar-layout {grid-template-columns:1fr}
+  .calendar-day {min-height:84px}
+  .bottom-nav {border-color:#e0e8ef;box-shadow:0 -4px 17px #1a3c5412;min-height:63px}
+  .bottom-nav button {min-width:0;min-height:49px;padding:5px 2px;font-size:12px;gap:3px;color:#60788f}
+  .bottom-nav button.active {color:#115aaf}
+  .bottom-nav button span {font-size:11px}
+  .kanban-board {gap:12px}
+}
+@media (max-width:560px) {
+  .main {padding:16px 12px calc(99px + env(safe-area-inset-bottom))}
+  .topbar {margin-bottom:20px;padding-bottom:16px;align-items:center}
+  .topbar h1 {font-size:24px}
+  .topbar .btn {height:43px;min-height:43px;padding:0 12px;font-size:12px;gap:5px}
+  .topbar .btn svg {width:15px;height:15px}
+  .eyebrow {font-size:11px}
+  .metrics {gap:9px;margin-bottom:15px}
+  .metric {min-height:111px;padding:13px 12px}
+  .metric strong {font-size:21px}
+  .metric-label {font-size:12px}
+  .metric-foot {font-size:10px;line-height:1.3}
+  .section-head {gap:8px;align-items:start}
+  .section-head h2 {font-size:17px}
+  .section-head p {font-size:12px;line-height:1.35}
+  .calendar-panel {padding:15px 8px 10px}
+  .calendar-toolbar {margin:0 5px 13px}
+  .month-switch h2 {min-width:143px;font-size:16px}
+  .month-switch {gap:1px}
+  .month-switch .icon-btn {width:37px;min-width:37px;height:39px;min-height:39px}
+  .calendar-day {min-height:74px;padding:5px 3px;gap:4px}
+  .day-number {height:22px;width:22px;font-size:12px}
+  .day-values span {font-size:9px;letter-spacing:-.2px;text-align:left}
+  .day-count {display:none}
+  .day-panel {padding:18px 15px}
+  .day-panel-heading h2 {font-size:17px}
+  .day-add-action {height:40px;min-height:40px;padding:0 10px}
+  .day-totals {margin:16px 0}
+  .entry-card {padding:10px 8px;gap:6px}
+  .entry-icon {width:28px;flex-basis:28px;height:28px}
+  .entry-actions button {min-width:32px;width:32px;height:35px}
+  .entry-amount {font-size:12px}
+  .entry-desc small {font-size:10px}
+  .deals-toolbar {padding:10px}
+  .deal-filters button {padding-inline:11px;font-size:12px}
+  .kanban-column {flex-basis:min(310px,86vw)}
+  .bottom-nav button span {font-size:10px}
+  .form-with-action .btn {min-height:42px;height:42px;padding:0 9px;font-size:12px}
+  .client-actions .btn {min-height:40px}
+  .clients-panel,.analytics-panel,.settings-panel {padding:15px}
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after {scroll-behavior:auto!important;animation-duration:.01ms!important;
+    transition-duration:.01ms!important}
+}
+/* Kanban scroll stays inside the page at narrow widths. */
+@media(max-width:850px){
+  .kanban-board{margin-right:0;padding-right:8px;max-width:100%;}
+  .kanban-column{min-height:310px;}
+}
