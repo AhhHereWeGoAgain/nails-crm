@@ -344,3 +344,71 @@ dialog::backdrop {background:#132b426b;backdrop-filter:blur(2px)}
 .kanban-card.completed-compact .kanban-card-footer {padding-top:7px;margin-top:5px;border-top:0}
 .kanban-card [hidden] {display:none!important}
 @media (max-width:600px) {.completed-toggle {width:44px;height:44px;flex-basis:44px}}
+
+
+/* Mobile date alignment · calendar header and native date control. */
+@media (max-width:600px) {
+  /* Calendar uses the same centered content width as the other panels. */
+  .calendar-layout,
+  .calendar-layout > .calendar-panel,
+  .calendar-panel .calendar-toolbar,
+  .calendar-panel .weekdays,
+  .calendar-panel .calendar-grid {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    margin-inline:auto;
+  }
+  .calendar-panel .month-switch {
+    display:grid;
+    grid-template-columns:40px minmax(0,1fr) 40px;
+    gap:5px;
+    width:100%;
+    min-width:0;
+    align-items:center;
+  }
+  .calendar-panel .month-switch h2 {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    margin:0;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .calendar-panel .month-switch .icon-btn {
+    justify-self:center;
+    max-width:40px;
+  }
+  .calendar-panel .calendar-grid {
+    grid-template-columns:repeat(7,minmax(0,1fr));
+  }
+
+  /* Android Chrome / iOS Safari date inputs can exceed their flex min-size. */
+  #entry-dialog .entry-form > label {
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+  }
+  #entry-date {
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+    margin-inline:auto;
+    padding-inline:12px;
+    text-align:center;
+  }
+  #entry-date::-webkit-date-and-time-value {
+    width:100%;
+    min-width:0;
+    text-align:center;
+  }
+  #entry-date::-webkit-datetime-edit {
+    min-width:0;
+    max-width:100%;
+  }
+}
