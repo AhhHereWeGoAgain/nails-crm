@@ -28,6 +28,7 @@
   let reportYear = viewYear;
   let saving = false;
   let dealFilter = 'all';
+  let mobileDealStage = 'planned';
   let toastTimer;
 
   function localDate(dt) {
@@ -220,10 +221,15 @@
     const booked = filtered.filter(e=>(e.status||'completed')!=='cancelled');
     const pending = booked.filter(e=>(e.status||'completed')!=='completed');
     $('deals-summary').innerHTML = `<div>${icon('list-checks')} <strong>${filtered.length}</strong> сделок на доске</div><div>${icon('clock-3')} <strong>${pending.length}</strong> ожидают завершения</div><div>${icon('circle-check')} <strong>${booked.length-pending.length}</strong> завершено</div>`;
+    const mobileTabs = $('mobile-stage-tabs');
+    mobileTabs.innerHTML = DEAL_STAGES.map(stage => {
+      const n = filtered.filter(e=>(e.status||'completed')===stage.id).length;
+      return `<button type="button" class="mobile-stage-tab ${stage.id===mobileDealStage?'active':''}" aria-pressed="${stage.id===mobileDealStage}" aria-label="${safe(stage.title)}: ${n} сделок" data-mobile-stage="${stage.id}"><span>${icon(stage.icon,16)}${safe(stage.id==='planned'?'Планы':stage.title)}</span><b>${n}</b></button>`;
+    }).join('');
     $('kanban-board').innerHTML = DEAL_STAGES.map(stage => {
       const list=filtered.filter(e=>(e.status||'completed')===stage.id).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'99:99').localeCompare(b.time||'99:99'));
       const total=list.reduce((n,e)=>n+e.amount,0);
-      return `<section class="kanban-column stage-column-${stage.id}" data-stage="${stage.id}" aria-label="${safe(stage.title)}">
+      return `<section class="kanban-column stage-column-${stage.id} ${stage.id===mobileDealStage?'mobile-current':''}" data-stage="${stage.id}" aria-label="${safe(stage.title)}">
         <header class="kanban-column-head"><div class="kanban-title">${icon(stage.icon,18)}<strong>${safe(stage.title)}</strong><span class="kanban-count">${list.length}</span></div><div class="kanban-total">${money(total)}</div></header>
         <div class="kanban-cards">${list.length?list.map(e=>{
           const income=e.kind==='income';
@@ -330,6 +336,7 @@
   }
   function navigate(page) {
     selectedPage = page;
+    document.documentElement.dataset.activePage = page;
     document.querySelectorAll('.page').forEach(el => el.hidden = el.id !== `${page}-page`);
     document.querySelectorAll('[data-page]').forEach(el => el.classList.toggle('active',el.dataset.page===page));
     const title={calendar:'Календарь',deals:'Сделки',reports:'Финансы',clients:'Клиенты',settings:'Настройки'}[page];
@@ -437,6 +444,12 @@
     document.querySelectorAll('[data-deal-filter]').forEach(b=>b.classList.toggle('active',b===btn));renderDeals();
   }));
   $('deal-search').addEventListener('input',renderDeals);
+  $('mobile-stage-tabs').addEventListener('click',event=>{
+    const tab=event.target.closest('[data-mobile-stage]');
+    if (!tab)return;
+    mobileDealStage=tab.dataset.mobileStage;
+    renderDeals();
+  });
   $('kanban-board').addEventListener('click',e=>{
     const edit=e.target.closest('[data-kanban-edit]');
     const create=e.target.closest('[data-create-stage]');
