@@ -87,6 +87,8 @@
         e.time ||= null;
       } else if (!categoryIds.has(e.categoryId)) throw Error('Операция с отсутствующей статьёй расходов');
       else {e.clientId=null;e.time=null;}
+      if (e.purchaseSource != null && (typeof e.purchaseSource !== 'string' || e.purchaseSource.length > 100 || e.kind !== 'expense' || e.categoryId !== 'materials')) throw Error('Некорректное место покупки');
+      e.purchaseSource ||= null;
       entryIds.add(e.id);
     }
     return {categories:result.categories, entries:result.entries, clients:result.clients, clientSources:result.clientSources};
@@ -209,7 +211,7 @@
       const income = entry.kind === 'income';
       const label = income ? entry.name : category(entry.categoryId);
       const stage = DEAL_STAGES.find(x=>x.id===(entry.status||'completed')) || DEAL_STAGES[2];
-      const sub = income ? `${entry.time ? `<b class="appointment-time">${safe(entry.time)}</b> · ` : ''}Налог ${entry.taxRate}%${entry.note ? ' · ' + safe(entry.note) : ''}` : (entry.note ? safe(entry.note) : 'Расход');
+      const sub = income ? `${entry.time ? `<b class="appointment-time">${safe(entry.time)}</b> · ` : ''}Налог ${entry.taxRate}%${entry.note ? ' · ' + safe(entry.note) : ''}` : `${entry.purchaseSource ? 'Магазин: '+safe(entry.purchaseSource) : 'Расход'}${entry.note ? ' · '+safe(entry.note) : ''}`;
       return `<article class="entry-card"><span class="entry-icon ${income?'':'out'}">${icon(income?'user-round':'wallet')}</span><div class="entry-desc"><strong>${safe(label)}</strong><small><span class="status-pill stage-${safe(stage.id)}">${safe(stage.title)}</span> ${sub}</small></div><div class="entry-amount ${income?'in':'out'}">${income?'+':'−'}${money(entry.amount)}</div><div class="entry-actions"><button data-edit="${safe(entry.id)}" type="button" aria-label="Редактировать">${icon('pencil',16)}</button><button data-remove="${safe(entry.id)}" type="button" aria-label="Удалить">${icon('trash-2',16)}</button></div></article>`;
     }).join('') : '<div class="empty"><span class="empty-symbol">'+icon('calendar-days',34)+'</span>На эту дату сделок нет.<br>Нажмите «+», чтобы добавить первую.</div>';
   }
@@ -237,6 +239,7 @@
             <div class="kanban-card-top"><span class="kanban-kind ${income?'kind-income':'kind-expense'}">${icon(income?'user-round':'wallet',14)} ${income?'Клиент':'Расход'}</span><span class="drag-grip" title="Перетащите на другую стадию">${icon('grip-vertical',17)}</span></div>
             <strong class="kanban-card-title">${safe(income?e.name:category(e.categoryId))}</strong>
             <div class="kanban-card-meta">${icon('calendar-days',14)} ${safe(longDate(e.date))}${e.time?' · '+safe(e.time):''}</div>
+            ${e.purchaseSource ? `<p class="kanban-note">Магазин: ${safe(e.purchaseSource)}</p>` : ''}
             ${e.note?`<p class="kanban-note">${safe(e.note)}</p>`:''}
             <div class="kanban-card-footer"><strong class="kanban-price">${money(e.amount)}</strong><button type="button" data-kanban-edit="${safe(e.id)}" aria-label="Редактировать сделку">${icon('pencil',16)}</button></div>
             <label class="kanban-status-label">Стадия <select data-deal-status="${safe(e.id)}" aria-label="Стадия сделки ${safe(income?e.name:category(e.categoryId))}">${DEAL_STAGES.map(opt=>`<option value="${opt.id}" ${opt.id===stage.id?'selected':''}>${safe(opt.title)}</option>`).join('')}</select></label>
@@ -355,9 +358,16 @@
   }
   function updateRent() {
     const selected = $('entry-category').value;
+    $('purchase-source-wrap').hidden = operationKind!=='expense' || selected!=='materials';
+    updatePurchaseSource();
     const rent = C.recentRent(state.entries.filter(e=>e.id!==editing), 'rent');
     $('rent-preset').hidden = operationKind!=='expense' || selected!=='rent' || rent===null;
     $('last-rent').textContent = rent === null ? '—' : money(rent);
+  }
+  function updatePurchaseSource() {
+    const custom = !$('purchase-source-wrap').hidden && $('purchase-source').value === 'other';
+    $('custom-purchase-wrap').hidden = !custom;
+    $('custom-purchase').required = custom;
   }
   function updateTaxControl() {
     $('custom-tax-wrap').hidden = $('tax-select').value !== 'custom';
@@ -383,6 +393,9 @@
     $('entry-note').value = entry?.note || '';
     $('entry-amount').value = entry ? (entry.amount/100).toFixed(2) : '';
     $('entry-category').value = entry?.categoryId || state.categories[0]?.id || '';
+    const source = entry?.purchaseSource || '';
+    $('purchase-source').value = ['', 'Wildberries', 'Ozon'].includes(source) ? source : 'other';
+    $('custom-purchase').value = ['', 'Wildberries', 'Ozon'].includes(source) ? '' : source;
     if (entry && entry.kind==='income' && ![0,4,6].includes(Number(entry.taxRate))) {
       $('tax-select').value = 'custom'; $('custom-tax').value = entry.taxRate;
     } else $('tax-select').value = String(entry?.taxRate ?? 4);
@@ -398,7 +411,10 @@
     if(!Number.isSafeInteger(amount) || amount<=0 || amount>1e12){toast('Укажите корректную сумму');return;}
     if(operationKind==='income' && (!Number.isFinite(taxRate) || taxRate<0 || taxRate>100)){toast('Налоговая ставка должна быть от 0 до 100%');return;}
     if(operationKind==='income' && !state.clients.some(c=>c.id===$('entry-client').value)){toast('Выберите клиента или создайте нового');return;}
-    const item = {date:$('entry-date').value,kind:operationKind,status:$('entry-status').value,clientId:operationKind==='income'?$('entry-client').value:null,time:operationKind==='income'?($('entry-time').value||null):null,amount,
+    const materialExpense = operationKind==='expense' && $('entry-category').value==='materials';
+    const purchaseSource = materialExpense ? ($('purchase-source').value==='other' ? $('custom-purchase').value.trim() : $('purchase-source').value) : null;
+    if(materialExpense && $('purchase-source').value==='other' && !purchaseSource){toast('Введите название магазина');return;}
+    const item = {purchaseSource: purchaseSource || null, date:$('entry-date').value,kind:operationKind,status:$('entry-status').value,clientId:operationKind==='income'?$('entry-client').value:null,time:operationKind==='income'?($('entry-time').value||null):null,amount,
       taxRate: operationKind==='income'?taxRate:0, categoryId:operationKind==='expense'?$('entry-category').value:null, note:$('entry-note').value.trim()};
     saving=true;$('save-entry').disabled=true;
     try {await mutate(editing?'PUT':'POST',editing?`/api/entries/${editing}`:'/api/entries',item);selectedDate=item.date;viewYear=Number(item.date.slice(0,4));viewMonth=Number(item.date.slice(5,7))-1;render();closeEntry();toast('Сделка сохранена');}
@@ -428,6 +444,7 @@
   $('entry-form').addEventListener('submit',handleSave);
   $('tax-select').addEventListener('change',updateTaxControl);$('custom-tax').addEventListener('input',updatePreview);$('entry-amount').addEventListener('input',updatePreview);
   $('entry-category').addEventListener('change',updateRent);
+  $('purchase-source').addEventListener('change',updatePurchaseSource);
   $('use-last-rent').addEventListener('click',()=>{const rent=C.recentRent(state.entries.filter(e=>e.id!==editing),'rent');if(rent!==null){$('entry-amount').value=(rent/100).toFixed(2);updatePreview();}});
   $('calendar-grid').addEventListener('click',e=>{const el=e.target.closest('[data-date]');if(!el)return;selectedDate=el.dataset.date;viewYear=Number(selectedDate.slice(0,4));viewMonth=Number(selectedDate.slice(5,7))-1;renderCalendar();openEntry();});
   $('prev-month').addEventListener('click',()=>{const dt=new Date(viewYear,viewMonth-1,1);viewYear=dt.getFullYear();viewMonth=dt.getMonth();selectedDate=localDate(dt);renderCalendar();});
