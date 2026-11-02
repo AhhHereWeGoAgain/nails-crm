@@ -16,3 +16,9 @@ jobs:
         run: node tests/core.test.js
       - name: JavaScript syntax check
         run: node --check web/app.js
+      - name: Install Chromium test dependencies
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Mobile and desktop browser smoke
+        run: python3 tests/ui_smoke.py
