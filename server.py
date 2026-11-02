@@ -91,6 +91,17 @@ def valid_id(value: object, field: str) -> str:
     return value
 
 
+def valid_photo(value: object) -> str | None:
+    """A compact, browser-resized raster image stored locally with the record."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or len(value) > 400_000 or not re.fullmatch(
+        r"data:image/(?:jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}", value
+    ):
+        raise ApiError("Фото слишком большое или имеет неверный формат (до 300 КБ)")
+    return value
+
+
 class Storage:
     def __init__(self, file: Path):
         self.file = file
@@ -143,6 +154,13 @@ class Storage:
                 c.execute("ALTER TABLE entries ADD COLUMN client_id TEXT REFERENCES clients(id) ON DELETE RESTRICT")
             if "purchase_source" not in columns:
                 c.execute("ALTER TABLE entries ADD COLUMN purchase_source TEXT")
+            if "photo" not in columns:
+                c.execute("ALTER TABLE entries ADD COLUMN photo TEXT")
+            if "address" not in columns:
+                c.execute("ALTER TABLE entries ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+            client_columns = {r["name"] for r in c.execute("PRAGMA table_info(clients)")}
+            if "photo" not in client_columns:
+                c.execute("ALTER TABLE clients ADD COLUMN photo TEXT")
             if "status" not in columns:
                 c.execute("ALTER TABLE entries ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'")
             for row in c.execute("""SELECT DISTINCT client_name FROM entries
@@ -181,7 +199,7 @@ class Storage:
     @staticmethod
     def to_client(r: sqlite3.Row) -> dict:
         return {"id":r["id"], "name":r["name"], "phone":r["phone"], "note":r["note"],
-                "sourceId":r["source_id"], "createdAt":r["created_at"], "updatedAt":r["updated_at"]}
+                "sourceId":r["source_id"], "photo":r["photo"], "createdAt":r["created_at"], "updatedAt":r["updated_at"]}
 
     @staticmethod
     def to_entry(r: sqlite3.Row) -> dict:
@@ -189,7 +207,7 @@ class Storage:
                 "kind": r["kind"], "clientId": r["client_id"], "status": r["status"],
                 "name": r["client_name"], "amount": r["amount_kopeks"],
                 "taxRate": r["tax_rate"], "categoryId": r["category_id"],
-                "note": r["note"], "purchaseSource": r["purchase_source"], "createdAt": r["created_at"], "updatedAt": r["updated_at"]}
+                "note": r["note"], "purchaseSource": r["purchase_source"], "photo": r["photo"], "address": r["address"], "createdAt": r["created_at"], "updatedAt": r["updated_at"]}
 
     @staticmethod
     def validate_entry(data: object) -> tuple:
@@ -204,10 +222,14 @@ class Storage:
             raise ApiError("Недопустимая стадия сделки")
         amount = valid_amount(data.get("amount"))
         note = clean_text(data.get("note", ""), "Комментарий", 1000)
+        photo = valid_photo(data.get("photo"))
+        address = clean_text(data.get("address", ""), "Адрес", 240)
         purchase_source = data.get("purchaseSource")
         if purchase_source is not None:
             purchase_source = clean_text(purchase_source, "Место покупки", 100) or None
         if kind == "income":
+            if address:
+                raise ApiError("Адрес разрешён только для прочих расходов")
             if purchase_source is not None:
                 raise ApiError("Место покупки указывается только для материалов и оборудования")
             name = clean_text(data.get("name", ""), "Клиент")
@@ -219,17 +241,21 @@ class Storage:
             rate = data.get("taxRate")
             if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate <= 100:
                 raise ApiError("Налог должен быть от 0 до 100%")
-            return (entry_date, valid_time(data.get("time")), kind, client_id, name, amount, float(rate), None, note, status, None)
+            return (entry_date, valid_time(data.get("time")), kind, client_id, name, amount, float(rate), None, note, status, None, photo, "")
         category_id = data.get("categoryId")
         if not isinstance(category_id, str) or not category_id:
             raise ApiError("Выберите статью расходов")
         if category_id not in ("materials", "equipment") and purchase_source is not None:
             raise ApiError("Место покупки указывается только для материалов и оборудования")
-        return (entry_date, None, kind, None, "", amount, 0, category_id, note, status, purchase_source)
+        if category_id != "other" and address:
+            raise ApiError("Адрес разрешён только для прочих расходов")
+        if category_id not in ("materials", "equipment", "other") and photo:
+            raise ApiError("Фото можно добавить только клиенту, материалам, оборудованию и прочим расходам")
+        return (entry_date, None, kind, None, "", amount, 0, category_id, note, status, purchase_source, photo, address)
 
     @staticmethod
     def resolve_entry_client(c: sqlite3.Connection, v: tuple) -> tuple:
-        d, t, kind, client_id, name, amount, rate, category_id, note, status, purchase_source = v
+        d, t, kind, client_id, name, amount, rate, category_id, note, status, purchase_source, photo, address = v
         if kind == "income":
             if client_id is not None:
                 client = c.execute("SELECT name FROM clients WHERE id=?", (client_id,)).fetchone()
@@ -247,7 +273,7 @@ class Storage:
         else:
             if not c.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
                 raise ApiError("Статья расходов не найдена")
-        return (d,t,kind,client_id,name,amount,rate,category_id,note,status,purchase_source)
+        return (d,t,kind,client_id,name,amount,rate,category_id,note,status,purchase_source,photo,address)
 
     def save_entry(self, data: object, entry_id: str | None = None) -> dict:
         values = self.validate_entry(data)
@@ -259,13 +285,13 @@ class Storage:
                 values = self.resolve_entry_client(c, values)
                 if entry_id:
                     c.execute("""UPDATE entries SET entry_date=?,entry_time=?,kind=?,client_id=?,client_name=?,
-                        amount_kopeks=?,tax_rate=?,category_id=?,note=?,status=?,purchase_source=?,updated_at=? WHERE id=?""",
+                        amount_kopeks=?,tax_rate=?,category_id=?,note=?,status=?,purchase_source=?,photo=?,address=?,updated_at=? WHERE id=?""",
                         (*values, now, entry_id))
                 else:
                     entry_id = str(uuid.uuid4())
                     c.execute("""INSERT INTO entries(id,entry_date,entry_time,kind,client_id,client_name,
-                        amount_kopeks,tax_rate,category_id,note,status,purchase_source,created_at,updated_at)
-                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (entry_id,*values,now,now))
+                        amount_kopeks,tax_rate,category_id,note,status,purchase_source,photo,address,created_at,updated_at)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (entry_id,*values,now,now))
                 return self.to_entry(c.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone())
             except sqlite3.IntegrityError as exc:
                 raise ApiError("Не удалось сохранить запись из-за ограничения базы") from exc
@@ -285,6 +311,7 @@ class Storage:
         name = clean_text(data.get("name", ""), "Имя клиента", required=True)
         phone = valid_phone(data.get("phone", ""))
         note = clean_text(data.get("note", ""), "Комментарий", 1000)
+        photo = valid_photo(data.get("photo"))
         source_id = data.get("sourceId") or None
         if source_id is not None:
             valid_id(source_id, "Источник")
@@ -293,14 +320,14 @@ class Storage:
             if source_id and not c.execute("SELECT 1 FROM client_sources WHERE id=?", (source_id,)).fetchone():
                 raise ApiError("Источник клиента не найден")
             if client_id:
-                if c.execute("""UPDATE clients SET name=?,phone=?,note=?,source_id=?,updated_at=?
-                                WHERE id=?""", (name,phone,note,source_id,now,client_id)).rowcount == 0:
+                if c.execute("""UPDATE clients SET name=?,phone=?,note=?,source_id=?,photo=?,updated_at=?
+                                WHERE id=?""", (name,phone,note,source_id,photo,now,client_id)).rowcount == 0:
                     raise ApiError("Клиент не найден", 404)
                 c.execute("UPDATE entries SET client_name=? WHERE client_id=?", (name,client_id))
             else:
                 client_id = str(uuid.uuid4())
-                c.execute("""INSERT INTO clients(id,name,phone,note,source_id,created_at,updated_at)
-                             VALUES (?,?,?,?,?,?,?)""", (client_id,name,phone,note,source_id,now,now))
+                c.execute("""INSERT INTO clients(id,name,phone,note,source_id,photo,created_at,updated_at)
+                             VALUES (?,?,?,?,?,?,?,?)""", (client_id,name,phone,note,source_id,photo,now,now))
             return self.to_client(c.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone())
 
     def delete_client(self, client_id: str) -> None:
@@ -391,7 +418,7 @@ class Storage:
             updated = clean_text(client.get("updatedAt",created),"Дата изменения",64,True)
             clients.append((identifier,clean_text(client.get("name",""),"Имя клиента",240,True),
                             valid_phone(client.get("phone","")),clean_text(client.get("note",""),"Комментарий",1000),
-                            source,created,updated))
+                            source,valid_photo(client.get("photo")),created,updated))
         entry_ids,entries = set(),[]
         for e in data["entries"]:
             if not isinstance(e,dict):
@@ -416,12 +443,12 @@ class Storage:
             c.execute("DELETE FROM categories")
             c.executemany("INSERT INTO categories(id,label) VALUES (?,?)",categories)
             c.executemany("INSERT INTO client_sources(id,label) VALUES (?,?)",sources)
-            c.executemany("""INSERT INTO clients(id,name,phone,note,source_id,created_at,updated_at)
-                             VALUES (?,?,?,?,?,?,?)""",clients)
+            c.executemany("""INSERT INTO clients(id,name,phone,note,source_id,photo,created_at,updated_at)
+                             VALUES (?,?,?,?,?,?,?,?)""",clients)
             for identifier,v,created,updated in entries:
                 v = self.resolve_entry_client(c,v)
                 c.execute("""INSERT INTO entries(id,entry_date,entry_time,kind,client_id,client_name,amount_kopeks,
-                             tax_rate,category_id,note,status,purchase_source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                             tax_rate,category_id,note,status,purchase_source,photo,address,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (identifier,*v,created,updated))
 
 
@@ -457,7 +484,7 @@ class Handler(SimpleHTTPRequestHandler):
             traceback.print_exc()
             self.send_json({"error": "Ошибка сервера"}, 500)
 
-    def read_json(self, limit: int = 32_768):
+    def read_json(self, limit: int = 600_000):
         length = int(self.headers.get("Content-Length", "0"))
         if length <= 0 or length > limit:
             raise ApiError("Размер запроса недопустим", 413)
@@ -484,7 +511,7 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/client-sources":
                 self.send_json(self.storage.add_source(self.read_json()), 201)
             elif self.path == "/api/import":
-                self.storage.replace_state(self.read_json(12_000_000))
+                self.storage.replace_state(self.read_json(50_000_000))
                 self.send_json({"ok": True})
             else:
                 self.send_json({"error": "Не найдено"}, 404)
