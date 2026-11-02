@@ -1,5 +1,14 @@
 """Browser smoke for all three CRM pages (mock transport; backend tested independently)."""
 from pathlib import Path
+import struct
+import zlib
+
+def tiny_png():
+    def chunk(kind, payload):
+        return struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',zlib.crc32(kind+payload))
+    header=struct.pack('>IIBBBBB',1,1,8,2,0,0,0)
+    return b'\\x89PNG\\r\\n\\x1a\\n'+chunk(b'IHDR',header)+chunk(b'IDAT',zlib.compress(b'\\x00\\xff\\xff\\xff'))+chunk(b'IEND',b'')
+
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 SCREENSHOTS = Path('/mnt/data') if Path('/mnt/data').exists() else Path('/tmp')
@@ -40,10 +49,16 @@ with sync_playwright() as p:
     page.locator('#add-client').click()
     page.locator('#client-name').fill('Анна Новая')
     page.locator('#client-phone').fill('+7 (999) 123-45-67')
+    page.locator('#client-photo-file').set_input_files({
+        'name':'avatar.png','mimeType':'image/png','buffer':tiny_png()
+    })
+    page.locator('#client-photo-preview-wrap').wait_for(state='visible')
     page.locator('#client-source').select_option('other')
     page.locator('#custom-source').fill('ВКонтакте')
     page.locator('#save-client').click()
     page.locator('#client-dialog').wait_for(state='hidden')
+    assert page.locator('.client-avatar-photo').count()==1
+    assert page.evaluate("window.mockState.clients[0].photo.startsWith('data:image/jpeg;base64,')")
     assert page.get_by_text('ВКонтакте').count()>=1
     page.locator('.sidebar [data-page="calendar"]').click()
     page.locator('.calendar-day:not(.outside)').nth(6).click()
@@ -70,6 +85,24 @@ with sync_playwright() as p:
     page.screenshot(path=str(SCREENSHOTS/'nails-crm-design-kanban-desktop.png'),full_page=True)
     page.locator('.sidebar [data-page="calendar"]').click()
     page.screenshot(path=str(SCREENSHOTS/'nails-crm-design-calendar-desktop.png'),full_page=True)
+    # Optional receipt photo and address in the Other-expense form.
+    page.locator('#add-entry').click()
+    page.locator('[data-kind="expense"]').click()
+    page.locator('#entry-category').select_option('other')
+    assert page.locator('#expense-address-wrap').is_visible()
+    assert page.locator('#entry-photo-wrap').is_visible()
+    page.locator('#entry-address').fill('ул. Ленина, 5')
+    page.locator('#entry-amount').fill('350')
+    page.locator('#entry-photo-file').set_input_files({
+        'name':'receipt.png','mimeType':'image/png','buffer':tiny_png()
+    })
+    page.locator('#entry-photo-preview-wrap').wait_for(state='visible')
+    page.locator('#save-entry').click()
+    page.locator('#entry-dialog').wait_for(state='hidden')
+    assert page.evaluate("window.mockState.entries.some(e=>e.kind==='expense' && e.address==='ул. Ленина, 5' && e.photo.startsWith('data:image/jpeg;base64,'))")
+    page.locator('.sidebar [data-page="deals"]').click()
+    assert page.locator('.kanban-photo').count()>=1
+
     mobile=browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
     mobile.on('pageerror',lambda e:errors.append(str(e)))
     mobile.set_content(html)
