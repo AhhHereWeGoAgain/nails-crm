@@ -26,6 +26,52 @@
   let state = {entries:[], categories:[], clients:[], clientSources:[]};
   let editingClient = null;
   let quickClient = false;
+  let pendingEntryPhoto=null, pendingClientPhoto=null, photoLoading=false;
+  const photoValid = v => v==null || (typeof v==='string' && v.length<=400000 && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(v));
+  const imageMarkup = (v,cls,alt) => v ? `<img class="${cls}" src="${safe(v)}" alt="${safe(alt)}" loading="lazy">` : '';
+  function showPhoto(kind,value) {
+    const wrap=$(kind+'-photo-preview-wrap'), preview=$(kind+'-photo-preview');
+    wrap.hidden=!value;
+    if(value)preview.src=value;else preview.removeAttribute('src');
+  }
+  async function compressPhoto(file) {
+    if(!file || !file.type.startsWith('image/'))throw Error('Выберите фотографию');
+    if(file.size>15*1024*1024)throw Error('Фото больше 15 МБ');
+    const url=URL.createObjectURL(file);
+    try {
+      const img=await new Promise((ok,fail)=>{
+        const element=new Image();
+        element.onload=()=>ok(element);
+        element.onerror=()=>fail(Error('Не удалось открыть изображение'));
+        element.src=url;
+      });
+      for(const limit of [900,700,540,420]) {
+        const scale=Math.min(1,limit/Math.max(img.naturalWidth,img.naturalHeight));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+        canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+        const context=canvas.getContext('2d');
+        if(!context)throw Error('Не удалось обработать фотографию');
+        context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+        context.drawImage(img,0,0,canvas.width,canvas.height);
+        for(const quality of [0.78,0.64,0.5]){
+          const photo=canvas.toDataURL('image/jpeg',quality);
+          if(photoValid(photo))return photo;
+        }
+      }
+      throw Error('Не удалось сжать фото до 300 КБ');
+    } finally {URL.revokeObjectURL(url);}
+  }
+  async function handlePhotoChange(kind,file) {
+    if(!file)return;
+    photoLoading=true;
+    try {
+      const photo=await compressPhoto(file);
+      if(kind==='entry')pendingEntryPhoto=photo;else pendingClientPhoto=photo;
+      showPhoto(kind,photo);
+    }catch(e){toast(e.message);}
+    finally{$(kind+'-photo-file').value='';photoLoading=false;}
+  }
   let reportYear = viewYear;
   let saving = false;
   let dealFilter = 'all';
@@ -66,7 +112,8 @@
     const byName = new Map();
     for (const client of result.clients) {
       if (!client || typeof client.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(client.id) || clientIds.has(client.id) || typeof client.name !== 'string' || !client.name.trim() || client.name.length > 240 || (client.sourceId && !sourceIds.has(client.sourceId))) throw Error('Неверная карточка клиента');
-      if (typeof (client.phone ?? '') !== 'string' || typeof (client.note ?? '') !== 'string') throw Error('Неверные данные клиента');
+      if (typeof (client.phone ?? '') !== 'string' || typeof (client.note ?? '') !== 'string' || !photoValid(client.photo)) throw Error('Неверные данные клиента');
+      client.photo ||= null;
       clientIds.add(client.id);
       byName.set(client.name.trim().toLowerCase(), client.id);
     }
@@ -81,7 +128,7 @@
         if (!e.clientId) {
           if (!String(e.name || '').trim()) throw Error('Операция без клиента');
           const key=e.name.trim().toLowerCase(); let id=byName.get(key);
-          if(!id){id=crypto.randomUUID();result.clients.push({id,name:e.name.trim(),phone:'',note:'',sourceId:null,createdAt:e.createdAt||new Date().toISOString(),updatedAt:e.updatedAt||new Date().toISOString()});clientIds.add(id);byName.set(key,id);}
+          if(!id){id=crypto.randomUUID();result.clients.push({id,name:e.name.trim(),phone:'',note:'',sourceId:null,photo:null,createdAt:e.createdAt||new Date().toISOString(),updatedAt:e.updatedAt||new Date().toISOString()});clientIds.add(id);byName.set(key,id);}
           e.clientId=id;
         }
         e.name=result.clients.find(c=>c.id===e.clientId).name;
@@ -90,6 +137,10 @@
       else {e.clientId=null;e.time=null;}
       if (e.purchaseSource != null && (typeof e.purchaseSource !== 'string' || e.purchaseSource.length > 100 || e.kind !== 'expense' || !['materials','equipment'].includes(e.categoryId))) throw Error('Некорректное место покупки');
       e.purchaseSource ||= null;
+      if(!photoValid(e.photo) || (e.kind==='expense' && !['materials','equipment','other'].includes(e.categoryId) && e.photo))throw Error('Некорректное фото');
+      e.photo ||= null;
+      if(typeof (e.address??'')!=='string' || (e.address||'').length>240 || (e.address&&(e.kind!=='expense'||e.categoryId!=='other')))throw Error('Некорректный адрес');
+      e.address ||= '';
       entryIds.add(e.id);
     }
     return {categories:result.categories, entries:result.entries, clients:result.clients, clientSources:result.clientSources};
@@ -428,7 +479,7 @@
   async function importFile(file) {
     if (!file) return;
     try {
-      if (file.size > 12 * 1024 * 1024) throw Error('Файл слишком большой');
+      if (file.size > 50 * 1024 * 1024) throw Error('Файл слишком большой');
       const data = validateBackup(JSON.parse(await file.text()));
       if (!confirm(`Заменить все текущие данные? В файле ${data.entries.length} операций и ${data.clients.length} клиентов.`)) return;
       if(standalone){state=data;persistLocal();render();}
@@ -437,7 +488,7 @@
     } catch(err){toast('Ошибка импорта: '+err.message);} finally{$('import-data').value='';}
   }
   function exportData() {
-    const json=JSON.stringify({schemaVersion:2,exportedAt:new Date().toISOString(),...state},null,2);
+    const json=JSON.stringify({schemaVersion:3,exportedAt:new Date().toISOString(),...state},null,2);
     if(window.Android && typeof window.Android.saveBackup==='function') {window.Android.saveBackup(json);return;}
     const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`nails-crm-${localDate(new Date())}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
   }
