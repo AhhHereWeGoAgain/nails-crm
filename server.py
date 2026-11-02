@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import socket
 import sqlite3
 import uuid
 from datetime import date, datetime, timezone
@@ -208,7 +209,7 @@ class Storage:
             purchase_source = clean_text(purchase_source, "Место покупки", 100) or None
         if kind == "income":
             if purchase_source is not None:
-                raise ApiError("Место покупки указывается только для материалов")
+                raise ApiError("Место покупки указывается только для материалов и оборудования")
             name = clean_text(data.get("name", ""), "Клиент")
             client_id = data.get("clientId") or None
             if client_id is not None:
@@ -222,8 +223,8 @@ class Storage:
         category_id = data.get("categoryId")
         if not isinstance(category_id, str) or not category_id:
             raise ApiError("Выберите статью расходов")
-        if category_id != "materials" and purchase_source is not None:
-            raise ApiError("Место покупки указывается только для материалов")
+        if category_id not in ("materials", "equipment") and purchase_source is not None:
+            raise ApiError("Место покупки указывается только для материалов и оборудования")
         return (entry_date, None, kind, None, "", amount, 0, category_id, note, status, purchase_source)
 
     @staticmethod
@@ -528,7 +529,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.run_action(fn)
 
 
-def start_server(host: str = "127.0.0.1", port: int = 8765, db_path: Path = DEFAULT_DB):
+def start_server(host: str = "0.0.0.0", port: int = 8765, db_path: Path = DEFAULT_DB):
     storage = Storage(Path(db_path))
     handler = partial(Handler, storage=storage)
     httpd = ThreadingHTTPServer((host, port), handler)
@@ -537,15 +538,30 @@ def start_server(host: str = "127.0.0.1", port: int = 8765, db_path: Path = DEFA
 
 def main():
     parser = argparse.ArgumentParser(description="Nails CRM: календарь и финансы без облака")
-    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 — доступ через домашний Wi-Fi (без шифрования)")
+    parser.add_argument("--host", default="0.0.0.0", help="0.0.0.0 — LAN Wi-Fi, 127.0.0.1 — только ПК")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     args = parser.parse_args()
     server = start_server(args.host, args.port, args.db)
-    print(f"Nails CRM: http://127.0.0.1:{server.server_port}/")
-    print(f"База данных: {args.db.resolve()}")
+    print(f"На компьютере: http://127.0.0.1:{server.server_port}/", flush=True)
     if args.host == "0.0.0.0":
-        print("ВНИМАНИЕ: доступно другим устройствам в сети. Только доверенный Wi-Fi!")
+        # UDP connect selects an interface without transmitting user data.
+        local_ip = None
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.connect(("192.0.2.1", 80))
+                local_ip = probe.getsockname()[0]
+        except OSError:
+            pass
+        if local_ip and not local_ip.startswith("127."):
+            print(f"На телефоне (тот же Wi-Fi): http://{local_ip}:{server.server_port}/", flush=True)
+        else:
+            print(f"На телефоне: http://<IPv4 компьютера>:{server.server_port}/", flush=True)
+            print("IP компьютера: Windows — ipconfig; Linux — hostname -I", flush=True)
+        print("ВНИМАНИЕ: сервер без пароля и HTTPS. Только доверенный Wi-Fi!", flush=True)
+    else:
+        print(f"Слушаем {args.host}; для телефона используйте --host 0.0.0.0", flush=True)
+    print(f"База данных: {args.db.resolve()}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
