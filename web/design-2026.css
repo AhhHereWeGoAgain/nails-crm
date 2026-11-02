@@ -333,3 +333,14 @@ dialog::backdrop {background:#132b426b;backdrop-filter:blur(2px)}
   #income-fields .form-with-action label {width:100%}
   #quick-add-client {width:100%;min-height:44px;justify-content:center}
 }
+
+/* Completed deal compact view: summary only until toggled. */
+.kanban-card.completed-compact {padding:11px 12px;cursor:default}
+.kanban-compact-line {display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.kanban-compact-line .kanban-card-title {min-width:0;overflow-wrap:anywhere}
+.completed-toggle {display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border:1px solid #dce6ef;background:#f5f9fc;color:#385a76;border-radius:9px;cursor:pointer}
+.completed-toggle:hover {background:#e7f1fa}
+.completed-toggle:focus-visible {outline:2px solid #3687cf;outline-offset:2px}
+.kanban-card.completed-compact .kanban-card-footer {padding-top:7px;margin-top:5px;border-top:0}
+.kanban-card [hidden] {display:none!important}
+@media (max-width:600px) {.completed-toggle {width:44px;height:44px;flex-basis:44px}}
