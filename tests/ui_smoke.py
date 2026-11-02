@@ -128,14 +128,20 @@ with sync_playwright() as p:
         mobile.locator('#add-entry').click()
         date_geometry=mobile.evaluate("""() => {
           const date=document.querySelector('#entry-date').getBoundingClientRect();
+          const time=document.querySelector('#entry-time').getBoundingClientRect();
           const dialog=document.querySelector('#entry-dialog').getBoundingClientRect();
           return {left:date.left,right:date.right,center:(date.left+date.right)/2,
+                  timeLeft:time.left,timeRight:time.right,timeCenter:(time.left+time.right)/2,
                   dialogLeft:dialog.left,dialogRight:dialog.right,
                   dialogCenter:(dialog.left+dialog.right)/2};
         }""")
         assert date_geometry['left']>=date_geometry['dialogLeft']+8, (vw,date_geometry)
         assert date_geometry['right']<=date_geometry['dialogRight']-8, (vw,date_geometry)
         assert abs(date_geometry['center']-date_geometry['dialogCenter'])<=2, (vw,date_geometry)
+        assert date_geometry['timeLeft']>=date_geometry['dialogLeft']+8, (vw,date_geometry)
+        assert date_geometry['timeRight']<=date_geometry['dialogRight']-8, (vw,date_geometry)
+        assert abs(date_geometry['timeCenter']-date_geometry['dialogCenter'])<=2, (vw,date_geometry)
+        assert abs((date_geometry['right']-date_geometry['left'])-(date_geometry['timeRight']-date_geometry['timeLeft']))<=2, (vw,date_geometry)
         mobile.locator('#close-dialog').click()
         assert mobile.evaluate('document.documentElement.scrollWidth')<=vw, f'calendar overflow at {vw}'
     mobile.set_viewport_size({'width':390,'height':844})
