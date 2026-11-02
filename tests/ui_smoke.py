@@ -2,6 +2,7 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
+SCREENSHOTS = Path('/mnt/data') if Path('/mnt/data').exists() else Path('/tmp')
 html=(ROOT/'web/index.html').read_text()
 styles=(ROOT/'web/styles.css').read_text() + '\n' + (ROOT/'web/design-2026.css').read_text()
 icons=(ROOT/'web/icons.js').read_text()
@@ -29,7 +30,8 @@ html=html.replace('<script src="./icons.js"></script>',f'<script>{icons}</script
 html=html.replace('<script src="./core.js"></script>',f'<script>{core}</script>')
 html=html.replace('<script src="./app.js" defer></script>',f'<script>{mock}</script><script>{app}</script>')
 with sync_playwright() as p:
-    browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+    chromium_path = '/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None
+    browser=p.chromium.launch(executable_path=chromium_path,headless=True,args=['--no-sandbox'])
     page=browser.new_page(viewport={'width':1440,'height':900})
     errors=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
@@ -65,17 +67,17 @@ with sync_playwright() as p:
     assert page.locator('#add-on-day').inner_text().strip()=='Добавить'
     assert page.locator('.cell-add').count()==0
     page.locator('.sidebar [data-page="deals"]').click()
-    page.screenshot(path='/mnt/data/nails-crm-design-kanban-desktop.png',full_page=True)
+    page.screenshot(path=str(SCREENSHOTS/'nails-crm-design-kanban-desktop.png'),full_page=True)
     page.locator('.sidebar [data-page="calendar"]').click()
-    page.screenshot(path='/mnt/data/nails-crm-design-calendar-desktop.png',full_page=True)
+    page.screenshot(path=str(SCREENSHOTS/'nails-crm-design-calendar-desktop.png'),full_page=True)
     mobile=browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
     mobile.on('pageerror',lambda e:errors.append(str(e)))
     mobile.set_content(html)
     mobile.locator('.bottom-nav [data-page="deals"]').click()
     assert mobile.locator('.bottom-nav').is_visible()
-    mobile.screenshot(path='/mnt/data/nails-crm-design-kanban-mobile.png',full_page=True)
+    mobile.screenshot(path=str(SCREENSHOTS/'nails-crm-design-kanban-mobile.png'),full_page=True)
     mobile.locator('.bottom-nav [data-page="calendar"]').click()
-    mobile.screenshot(path='/mnt/data/nails-crm-design-calendar-mobile.png',full_page=True)
+    mobile.screenshot(path=str(SCREENSHOTS/'nails-crm-design-calendar-mobile.png'),full_page=True)
     mobile.locator('.bottom-nav [data-page="deals"]').click()
     width=mobile.evaluate('document.documentElement.scrollWidth')
     if width>390:
