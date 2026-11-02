@@ -412,3 +412,38 @@ dialog::backdrop {background:#132b426b;backdrop-filter:blur(2px)}
     max-width:100%;
   }
 }
+
+
+/* Photos: shared client/expense forms, no remote upload. */
+.photo-field {display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%;gap:8px}
+.photo-field>label {font-size:12px;font-weight:650;color:#4a667a}
+.photo-field input[type=file] {width:100%;min-width:0;max-width:100%;height:auto;min-height:48px;padding:10px;font-size:13px;line-height:1.5;overflow:hidden}
+.photo-field input[type=file]::file-selector-button {padding:8px 12px;margin-right:10px;border:1px solid #cfdae4;border-radius:8px;background:#edf5ff;color:#1b5b92;cursor:pointer}
+.photo-field>small {line-height:1.4}
+.photo-preview-wrap {display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0}
+.photo-preview-wrap>img {max-width:min(190px,100%);width:160px;max-height:160px;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid #dce6ef}
+.photo-preview-wrap>.btn {min-height:42px}
+.client-avatar {overflow:hidden}
+.client-avatar-photo {display:block;width:100%;height:100%;object-fit:cover}
+.kanban-photo {display:block;width:100%;max-height:180px;object-fit:contain;border:1px solid #e0e9f0;border-radius:9px;background:#f7fafc;margin-block:8px}
+#expense-address-wrap {min-width:0}
+#entry-address {min-width:0;max-width:100%}
+
+/* Date and appointment-time controls: identical widths and box alignment on phones.
+   Native iOS / Android date widgets have larger intrinsic min-content widths. */
+#entry-dialog .entry-form,
+#entry-dialog .entry-form>label,
+#entry-dialog #income-fields,
+#entry-dialog #income-fields>label,
+#entry-dialog #expense-fields,
+#entry-dialog #expense-fields>label {min-width:0;max-width:100%;box-sizing:border-box}
+#entry-date,#entry-time {display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%;margin-inline:0}
+#entry-date::-webkit-date-and-time-value,#entry-time::-webkit-date-and-time-value {min-width:0;text-align:left}
+#entry-date::-webkit-datetime-edit,#entry-time::-webkit-datetime-edit {min-width:0;max-width:100%;padding-inline:0}
+@media(max-width:600px) {
+  #entry-dialog .entry-form {width:100%;min-width:0;max-width:100%}
+  #entry-date,#entry-time {height:46px;min-height:46px;max-width:100%;padding-inline:12px;text-align:left;font-size:16px;overflow:hidden}
+  #entry-dialog #income-fields>label {display:block;width:100%;min-width:0;max-width:100%}
+  .photo-preview-wrap>img {width:132px;max-height:132px}
+  .photo-field input[type=file] {font-size:14px}
+}
