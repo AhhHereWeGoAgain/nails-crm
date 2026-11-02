@@ -91,7 +91,46 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => {el.hidden = true;}, 4200);
   }
   function initialState() {return {categories:structuredClone(DEFAULT_CATEGORIES), clientSources:structuredClone(DEFAULT_SOURCES),clients:[], entries:[]};}
-  function persistLocal() {localStorage.setItem(KEY, JSON.stringify(state));}
+  async function storageDB(operation,value) {
+    if(!window.indexedDB)throw Error('IndexedDB недоступна');
+    const db=await new Promise((resolve,reject)=>{
+      const request=indexedDB.open('nails-crm-offline',1);
+      request.onupgradeneeded=()=>request.result.createObjectStore('state');
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error||Error('Ошибка открытия хранилища'));
+    });
+    try {
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction('state',operation==='get'?'readonly':'readwrite');
+        const request=operation==='get'?tx.objectStore('state').get(KEY):tx.objectStore('state').put(value,KEY);
+        request.onsuccess=()=>{if(operation==='get')resolve(request.result);};
+        tx.oncomplete=()=>{if(operation!=='get')resolve();};
+        request.onerror=()=>reject(request.error||Error('Ошибка чтения данных'));
+        tx.onerror=()=>reject(tx.error||Error('Ошибка сохранения данных'));
+      });
+    } finally {db.close();}
+  }
+  async function readLocalState() {
+    try {
+      const saved=await storageDB('get');
+      if(saved)return saved;
+      const legacy=JSON.parse(localStorage.getItem(KEY)||'null');
+      if(legacy){await storageDB('put',legacy);return legacy;}
+      return initialState();
+    }catch(e){
+      console.warn('IndexedDB unavailable; falling back to localStorage',e);
+      return JSON.parse(localStorage.getItem(KEY)||'null')||initialState();
+    }
+  }
+  async function persistLocal() {
+    try {
+      await storageDB('put',state);
+    }catch(e){
+      console.warn('IndexedDB write failed',e);
+      try{localStorage.setItem(KEY,JSON.stringify(state));}
+      catch(_){throw Error('Недостаточно памяти для фото. Скачайте резервную копию и освободите место.');}
+    }
+  }
   function validateBackup(data) {
     if (!data || !Array.isArray(data.entries) || !Array.isArray(data.categories) || data.entries.length > 100000 || data.categories.length > 5000) throw Error('Неверный формат резервной копии');
     const result = structuredClone(data);
@@ -147,7 +186,7 @@
   }
   async function refresh() {
     if (standalone) {
-      try {state = validateBackup(JSON.parse(localStorage.getItem(KEY)) || initialState());}
+      try {state = validateBackup(await readLocalState());}
       catch (e) { console.warn('Storage reset blocked:', e); state = initialState(); toast('Не удалось прочитать локальные данные. Проверьте резервную копию.'); }
     } else {
       const r = await fetch('/api/state', {cache:'no-store'});
@@ -221,7 +260,7 @@
       if (state.entries.some(e => e.categoryId === id)) throw Error('Категория используется в операциях. Сначала измените записи.');
       state.categories = state.categories.filter(c => c.id !== id);
     } else throw Error('Неизвестная команда');
-    persistLocal(); render();
+    await persistLocal(); render();
     return result;
   }
   function render() {
@@ -490,13 +529,18 @@
     catch(err){toast(err.message);}
     finally{saving=false;$('save-entry').disabled=false;}
   }
+  async function persistLocalBackup(data) {
+    const previous=state;
+    state=data;
+    try {await persistLocal();}catch(err){state=previous;throw err;}
+  }
   async function importFile(file) {
     if (!file) return;
     try {
       if (file.size > 50 * 1024 * 1024) throw Error('Файл слишком большой');
       const data = validateBackup(JSON.parse(await file.text()));
       if (!confirm(`Заменить все текущие данные? В файле ${data.entries.length} операций и ${data.clients.length} клиентов.`)) return;
-      if(standalone){state=data;persistLocal();render();}
+      if(standalone){await persistLocalBackup(data);render();}
       else {const r=await fetch('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const json=await r.json();if(!r.ok)throw Error(json.error || 'Ошибка импорта');await refresh();}
       toast('Резервная копия загружена');
     } catch(err){toast('Ошибка импорта: '+err.message);} finally{$('import-data').value='';}
