@@ -106,6 +106,38 @@ with sync_playwright() as p:
             assert mobile.evaluate('document.documentElement.scrollWidth')<=vw, f'{tab} overflow at {vw}'
         mobile.locator('.bottom-nav [data-page="deals"]').click()
         assert mobile.locator('.kanban-column:visible').count()==1
+    # Calendar heading is visually centered; native date field stays within dialog on phones.
+    for vw in [320,360,390,430]:
+        mobile.set_viewport_size({'width':vw,'height':844})
+        mobile.locator('.bottom-nav [data-page="calendar"]').click()
+        geometry=mobile.evaluate("""() => {
+          const b=sel=>document.querySelector(sel).getBoundingClientRect();
+          const toolbar=b('.calendar-panel .calendar-toolbar');
+          const month=b('.calendar-panel .month-switch h2');
+          const calendar=b('.calendar-panel .calendar-grid');
+          const panel=b('.calendar-panel');
+          return {panelLeft:panel.left,panelRight:panel.right,
+            calendarLeft:calendar.left,calendarRight:calendar.right,
+            toolbarCenter:(toolbar.left+toolbar.right)/2,
+            monthCenter:(month.left+month.right)/2};
+        }""")
+        assert geometry['panelLeft'] >= -1 and geometry['panelRight'] <= vw+1, (vw, geometry)
+        assert geometry['calendarLeft'] >= geometry['panelLeft']-1, (vw, geometry)
+        assert geometry['calendarRight'] <= geometry['panelRight']+1, (vw, geometry)
+        assert abs(geometry['toolbarCenter']-geometry['monthCenter'])<=2, (vw, geometry)
+        mobile.locator('#add-entry').click()
+        date_geometry=mobile.evaluate("""() => {
+          const date=document.querySelector('#entry-date').getBoundingClientRect();
+          const dialog=document.querySelector('#entry-dialog').getBoundingClientRect();
+          return {left:date.left,right:date.right,center:(date.left+date.right)/2,
+                  dialogLeft:dialog.left,dialogRight:dialog.right,
+                  dialogCenter:(dialog.left+dialog.right)/2};
+        }""")
+        assert date_geometry['left']>=date_geometry['dialogLeft']+8, (vw,date_geometry)
+        assert date_geometry['right']<=date_geometry['dialogRight']-8, (vw,date_geometry)
+        assert abs(date_geometry['center']-date_geometry['dialogCenter'])<=2, (vw,date_geometry)
+        mobile.locator('#close-dialog').click()
+        assert mobile.evaluate('document.documentElement.scrollWidth')<=vw, f'calendar overflow at {vw}'
     mobile.set_viewport_size({'width':390,'height':844})
     assert not errors,errors
     browser.close()
