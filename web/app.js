@@ -474,6 +474,8 @@
   $('kanban-board').addEventListener('click',e=>{
     const toggle=e.target.closest('[data-toggle-completed]');
     if(toggle){const id=toggle.dataset.toggleCompleted;if(expandedCompleted.has(id))expandedCompleted.delete(id);else expandedCompleted.add(id);renderDeals();return;}
+    const compactCard=e.target.closest('.kanban-card.completed-compact');
+    if(compactCard && !e.target.closest('button,select,input,a')){expandedCompleted.add(compactCard.dataset.dealId);renderDeals();return;}
     const edit=e.target.closest('[data-kanban-edit]');
     const create=e.target.closest('[data-create-stage]');
     if(edit){const item=state.entries.find(x=>x.id===edit.dataset.kanbanEdit);if(item)openEntry(item);}
