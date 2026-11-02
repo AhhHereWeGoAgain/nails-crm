@@ -14,6 +14,7 @@
   const KEY = 'nails-crm-local-v1';
   const MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
   const DEFAULT_SOURCES = [{id:'avito_model',label:'Авито (модель)'},{id:'avito_manicure',label:'Авито (маникюр)'},{id:'telegram',label:'Телеграм'},{id:'ads',label:'Реклама'},{id:'referral',label:'По рекомендации'}];
+  const expandedCompleted = new Set();
   const DEFAULT_CATEGORIES = [{id:'rent', label:'Аренда'}, {id:'materials', label:'Материалы'}, {id:'equipment', label:'Оборудование'}, {id:'other', label:'Прочее'}];
   const current = new Date();
   let viewYear = current.getFullYear();
@@ -87,7 +88,7 @@
         e.time ||= null;
       } else if (!categoryIds.has(e.categoryId)) throw Error('Операция с отсутствующей статьёй расходов');
       else {e.clientId=null;e.time=null;}
-      if (e.purchaseSource != null && (typeof e.purchaseSource !== 'string' || e.purchaseSource.length > 100 || e.kind !== 'expense' || e.categoryId !== 'materials')) throw Error('Некорректное место покупки');
+      if (e.purchaseSource != null && (typeof e.purchaseSource !== 'string' || e.purchaseSource.length > 100 || e.kind !== 'expense' || !['materials','equipment'].includes(e.categoryId))) throw Error('Некорректное место покупки');
       e.purchaseSource ||= null;
       entryIds.add(e.id);
     }
@@ -235,14 +236,17 @@
         <header class="kanban-column-head"><div class="kanban-title">${icon(stage.icon,18)}<strong>${safe(stage.title)}</strong><span class="kanban-count">${list.length}</span></div><div class="kanban-total">${money(total)}</div></header>
         <div class="kanban-cards">${list.length?list.map(e=>{
           const income=e.kind==='income';
-          return `<article class="kanban-card" draggable="true" data-deal-id="${safe(e.id)}">
-            <div class="kanban-card-top"><span class="kanban-kind ${income?'kind-income':'kind-expense'}">${icon(income?'user-round':'wallet',14)} ${income?'Клиент':'Расход'}</span><span class="drag-grip" title="Перетащите на другую стадию">${icon('grip-vertical',17)}</span></div>
-            <strong class="kanban-card-title">${safe(income?e.name:category(e.categoryId))}</strong>
-            <div class="kanban-card-meta">${icon('calendar-days',14)} ${safe(longDate(e.date))}${e.time?' · '+safe(e.time):''}</div>
-            ${e.purchaseSource ? `<p class="kanban-note">Магазин: ${safe(e.purchaseSource)}</p>` : ''}
-            ${e.note?`<p class="kanban-note">${safe(e.note)}</p>`:''}
-            <div class="kanban-card-footer"><strong class="kanban-price">${money(e.amount)}</strong><button type="button" data-kanban-edit="${safe(e.id)}" aria-label="Редактировать сделку">${icon('pencil',16)}</button></div>
-            <label class="kanban-status-label">Стадия <select data-deal-status="${safe(e.id)}" aria-label="Стадия сделки ${safe(income?e.name:category(e.categoryId))}">${DEAL_STAGES.map(opt=>`<option value="${opt.id}" ${opt.id===stage.id?'selected':''}>${safe(opt.title)}</option>`).join('')}</select></label>
+          const done = stage.id==='completed';
+          const compact = done && !expandedCompleted.has(e.id);
+          const displayName = income ? e.name : e.categoryId==='rent' ? 'Аренда' : ['materials','equipment'].includes(e.categoryId) ? (e.note || category(e.categoryId)) : category(e.categoryId);
+          return `<article class="kanban-card ${compact?'completed-compact':''}" draggable="${!compact}" data-deal-id="${safe(e.id)}">`
+            <div class="kanban-card-top" ${compact?'hidden':''}><span class="kanban-kind ${income?'kind-income':'kind-expense'}">${icon(income?'user-round':'wallet',14)} ${income?'Клиент':'Расход'}</span><span class="drag-grip" title="Перетащите на другую стадию">${icon('grip-vertical',17)}</span></div>
+            <div class="kanban-compact-line"><strong class="kanban-card-title">${safe(displayName)}</strong>${done?`<button type="button" class="completed-toggle" data-toggle-completed="${safe(e.id)}" aria-expanded="${!compact}" aria-label="${compact?'Развернуть':'Свернуть'} завершённую сделку">${icon(compact?'chevron-down':'chevron-up',16)}</button>`:''}</div>
+            <div class="kanban-card-meta" ${compact?'hidden':''}>${icon('calendar-days',14)} ${safe(longDate(e.date))}${e.time?' · '+safe(e.time):''}</div>
+            ${!compact && e.purchaseSource ? `<p class="kanban-note">Магазин: ${safe(e.purchaseSource)}</p>` : ''}
+            ${!compact && e.note?`<p class="kanban-note">${safe(e.note)}</p>`:''}
+            <div class="kanban-card-footer"><strong class="kanban-price">${money(e.amount)}</strong><button ${compact?'hidden':''} type="button" data-kanban-edit="${safe(e.id)}" aria-label="Редактировать сделку">${icon('pencil',16)}</button></div>
+            <label class="kanban-status-label" ${compact?'hidden':''}>Стадия <select data-deal-status="${safe(e.id)}" aria-label="Стадия сделки ${safe(income?e.name:category(e.categoryId))}">${DEAL_STAGES.map(opt=>`<option value="${opt.id}" ${opt.id===stage.id?'selected':''}>${safe(opt.title)}</option>`).join('')}</select></label>
           </article>`;}).join(''):'<p class="kanban-empty">Здесь пока нет сделок</p>'}</div>
         <button class="kanban-create" type="button" data-create-stage="${stage.id}">${icon('plus',16)} <span>Добавить сделку</span></button>
       </section>`;
@@ -358,7 +362,7 @@
   }
   function updateRent() {
     const selected = $('entry-category').value;
-    $('purchase-source-wrap').hidden = operationKind!=='expense' || selected!=='materials';
+    $('purchase-source-wrap').hidden = operationKind!=='expense' || !['materials','equipment'].includes(selected);
     updatePurchaseSource();
     const rent = C.recentRent(state.entries.filter(e=>e.id!==editing), 'rent');
     $('rent-preset').hidden = operationKind!=='expense' || selected!=='rent' || rent===null;
@@ -411,7 +415,7 @@
     if(!Number.isSafeInteger(amount) || amount<=0 || amount>1e12){toast('Укажите корректную сумму');return;}
     if(operationKind==='income' && (!Number.isFinite(taxRate) || taxRate<0 || taxRate>100)){toast('Налоговая ставка должна быть от 0 до 100%');return;}
     if(operationKind==='income' && !state.clients.some(c=>c.id===$('entry-client').value)){toast('Выберите клиента или создайте нового');return;}
-    const materialExpense = operationKind==='expense' && $('entry-category').value==='materials';
+    const materialExpense = operationKind==='expense' && ['materials','equipment'].includes($('entry-category').value);
     const purchaseSource = materialExpense ? ($('purchase-source').value==='other' ? $('custom-purchase').value.trim() : $('purchase-source').value) : null;
     if(materialExpense && $('purchase-source').value==='other' && !purchaseSource){toast('Введите название магазина');return;}
     const item = {purchaseSource: purchaseSource || null, date:$('entry-date').value,kind:operationKind,status:$('entry-status').value,clientId:operationKind==='income'?$('entry-client').value:null,time:operationKind==='income'?($('entry-time').value||null):null,amount,
@@ -468,6 +472,8 @@
     renderDeals();
   });
   $('kanban-board').addEventListener('click',e=>{
+    const toggle=e.target.closest('[data-toggle-completed]');
+    if(toggle){const id=toggle.dataset.toggleCompleted;if(expandedCompleted.has(id))expandedCompleted.delete(id);else expandedCompleted.add(id);renderDeals();return;}
     const edit=e.target.closest('[data-kanban-edit]');
     const create=e.target.closest('[data-create-stage]');
     if(edit){const item=state.entries.find(x=>x.id===edit.dataset.kanbanEdit);if(item)openEntry(item);}
