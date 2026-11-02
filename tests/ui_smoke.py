@@ -3,7 +3,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 html=(ROOT/'web/index.html').read_text()
-styles=(ROOT/'web/styles.css').read_text()
+styles=(ROOT/'web/styles.css').read_text() + '\n' + (ROOT/'web/design-2026.css').read_text()
 icons=(ROOT/'web/icons.js').read_text()
 core=(ROOT/'web/core.js').read_text()
 app=(ROOT/'web/app.js').read_text()
@@ -56,23 +56,57 @@ with sync_playwright() as p:
     page.locator('.sidebar [data-page="deals"]').click()
     page.locator('.stage-column-planned .kanban-card').wait_for()
     assert page.locator('.kanban-card').count()==1
+    assert page.locator('.kanban-create').first.evaluate('(el) => getComputedStyle(el).justifyContent')=='flex-start'
     assert '14:30' in page.locator('.kanban-card-meta').first.inner_text()
     page.locator('[data-deal-status]').first.select_option('completed')
     page.locator('.stage-column-completed .kanban-card').wait_for()
     page.locator('.sidebar [data-page="calendar"]').click()
     assert '2' in page.locator('#metric-income').inner_text()
+    assert page.locator('#add-on-day').inner_text().strip()=='Добавить'
+    assert page.locator('.cell-add').count()==0
     page.locator('.sidebar [data-page="deals"]').click()
-    page.screenshot(path='/mnt/data/nails-crm-v2-kanban-desktop.png',full_page=True)
+    page.screenshot(path='/mnt/data/nails-crm-design-kanban-desktop.png',full_page=True)
     page.locator('.sidebar [data-page="calendar"]').click()
-    page.screenshot(path='/mnt/data/nails-crm-v2-calendar-desktop.png',full_page=True)
+    page.screenshot(path='/mnt/data/nails-crm-design-calendar-desktop.png',full_page=True)
     mobile=browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
     mobile.on('pageerror',lambda e:errors.append(str(e)))
     mobile.set_content(html)
     mobile.locator('.bottom-nav [data-page="deals"]').click()
     assert mobile.locator('.bottom-nav').is_visible()
-    mobile.screenshot(path='/mnt/data/nails-crm-v2-kanban-mobile.png',full_page=True)
+    mobile.screenshot(path='/mnt/data/nails-crm-design-kanban-mobile.png',full_page=True)
+    mobile.locator('.bottom-nav [data-page="calendar"]').click()
+    mobile.screenshot(path='/mnt/data/nails-crm-design-calendar-mobile.png',full_page=True)
+    mobile.locator('.bottom-nav [data-page="deals"]').click()
     width=mobile.evaluate('document.documentElement.scrollWidth')
+    if width>390:
+        print('OVERFLOW',mobile.evaluate("() => [...document.querySelectorAll('*')].map(el=>({tag:el.tagName,cl:el.className?.baseVal||el.className,id:el.id,l:el.getBoundingClientRect().left,r:el.getBoundingClientRect().right})).filter(x=>x.r>391||x.l< -1).slice(0,30)"))
     assert width<=390,f'horizontal overflow: {width}'
+    # One complete kanban column at phone widths, selectable with visible stage buttons.
+    assert mobile.locator('.mobile-stage-tab').count()==4
+    assert mobile.locator('.kanban-column:visible').count()==1
+    mobile.locator('[data-mobile-stage="completed"]').click()
+    assert mobile.locator('.stage-column-completed').is_visible()
+    assert mobile.locator('.kanban-column:visible').count()==1
+    assert mobile.locator('[data-mobile-stage="completed"]').get_attribute('aria-pressed')=='true'
+    mobile.locator('.bottom-nav [data-page="settings"]').click()
+    assert mobile.locator('#category-name').evaluate('(e)=>e.getBoundingClientRect().height')<=48
+    assert mobile.locator('#source-name').evaluate('(e)=>e.getBoundingClientRect().height')<=48
+    mobile.locator('.bottom-nav [data-page="deals"]').click()
+    mobile.locator('#add-entry').click()
+    assert mobile.locator('#entry-dialog').is_visible()
+    assert mobile.locator('#save-entry').is_visible()
+    assert mobile.locator('#save-entry').evaluate('(e)=>e.getBoundingClientRect().bottom')<=844
+    mobile.locator('#entry-dialog').evaluate('(e)=>e.querySelector(".entry-form").scrollTop=500')
+    assert mobile.locator('#save-entry').evaluate('(e)=>e.getBoundingClientRect().bottom')<=844
+    mobile.locator('#close-dialog').click()
+    for vw in [320,360,430]:
+        mobile.set_viewport_size({'width':vw,'height':740})
+        for tab in ['calendar','deals','reports','clients','settings']:
+            mobile.locator(f'.bottom-nav [data-page="{tab}"]').click()
+            assert mobile.evaluate('document.documentElement.scrollWidth')<=vw, f'{tab} overflow at {vw}'
+        mobile.locator('.bottom-nav [data-page="deals"]').click()
+        assert mobile.locator('.kanban-column:visible').count()==1
+    mobile.set_viewport_size({'width':390,'height':844})
     assert not errors,errors
     browser.close()
 print('UI smoke: OK')
