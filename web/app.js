@@ -239,7 +239,7 @@
           const done = stage.id==='completed';
           const compact = done && !expandedCompleted.has(e.id);
           const displayName = income ? e.name : e.categoryId==='rent' ? 'Аренда' : ['materials','equipment'].includes(e.categoryId) ? (e.note || category(e.categoryId)) : category(e.categoryId);
-          return `<article class="kanban-card ${compact?'completed-compact':''}" draggable="${!compact}" data-deal-id="${safe(e.id)}">`
+          return `<article class="kanban-card ${compact?'completed-compact':''}" draggable="${!compact}" data-deal-id="${safe(e.id)}">
             <div class="kanban-card-top" ${compact?'hidden':''}><span class="kanban-kind ${income?'kind-income':'kind-expense'}">${icon(income?'user-round':'wallet',14)} ${income?'Клиент':'Расход'}</span><span class="drag-grip" title="Перетащите на другую стадию">${icon('grip-vertical',17)}</span></div>
             <div class="kanban-compact-line"><strong class="kanban-card-title">${safe(displayName)}</strong>${done?`<button type="button" class="completed-toggle" data-toggle-completed="${safe(e.id)}" aria-expanded="${!compact}" aria-label="${compact?'Развернуть':'Свернуть'} завершённую сделку">${icon(compact?'chevron-down':'chevron-up',16)}</button>`:''}</div>
             <div class="kanban-card-meta" ${compact?'hidden':''}>${icon('calendar-days',14)} ${safe(longDate(e.date))}${e.time?' · '+safe(e.time):''}</div>
