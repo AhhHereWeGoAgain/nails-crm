@@ -7,7 +7,7 @@ def tiny_png():
     def chunk(kind, payload):
         return struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',zlib.crc32(kind+payload))
     header=struct.pack('>IIBBBBB',1,1,8,2,0,0,0)
-    return b'\x89PNG\\r\\n\x1a\\n'+chunk(b'IHDR',header)+chunk(b'IDAT',zlib.compress(b'\x00\xff\xff\xff'))+chunk(b'IEND',b'')
+    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',header)+chunk(b'IDAT',zlib.compress(b'\x00\xff\xff\xff'))+chunk(b'IEND',b'')
 
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
