@@ -296,6 +296,8 @@
             <div class="kanban-card-meta" ${compact?'hidden':''}>${icon('calendar-days',14)} ${safe(longDate(e.date))}${e.time?' · '+safe(e.time):''}</div>
             ${!compact && e.purchaseSource ? `<p class="kanban-note">Магазин: ${safe(e.purchaseSource)}</p>` : ''}
             ${!compact && e.note?`<p class="kanban-note">${safe(e.note)}</p>`:''}
+            ${!compact && e.address?`<p class="kanban-note">Адрес: ${safe(e.address)}</p>`:''}
+            ${!compact && e.photo?imageMarkup(e.photo,'kanban-photo','Фото сделки'):''}
             <div class="kanban-card-footer"><strong class="kanban-price">${money(e.amount)}</strong><button ${compact?'hidden':''} type="button" data-kanban-edit="${safe(e.id)}" aria-label="Редактировать сделку">${icon('pencil',16)}</button></div>
             <label class="kanban-status-label" ${compact?'hidden':''}>Стадия <select data-deal-status="${safe(e.id)}" aria-label="Стадия сделки ${safe(income?e.name:category(e.categoryId))}">${DEAL_STAGES.map(opt=>`<option value="${opt.id}" ${opt.id===stage.id?'selected':''}>${safe(opt.title)}</option>`).join('')}</select></label>
           </article>`;}).join(''):'<p class="kanban-empty">Здесь пока нет сделок</p>'}</div>
@@ -347,7 +349,7 @@
     $('clients-list').innerHTML=clients.length?clients.map(c=>{
       const visits=state.entries.filter(e=>e.clientId===c.id&&e.kind==='income');
       const spent=visits.reduce((n,e)=>n+e.amount,0);
-      return `<article class="client-card"><div class="client-avatar">${safe(c.name.slice(0,1).toUpperCase())}</div><div class="client-info"><strong>${safe(c.name)}</strong><small>${safe(clientSource(c.sourceId))}${c.phone?' · '+safe(c.phone):''}</small>${c.note?`<small>${safe(c.note)}</small>`:''}<small>${visits.length} посещений · ${money(spent)}</small></div><div class="client-actions"><button type="button" class="btn btn-outline" data-client-history="${safe(c.id)}">История</button><button type="button" class="icon-btn" aria-label="Редактировать клиента" data-client-edit="${safe(c.id)}">${icon('pencil',16)}</button><button type="button" class="icon-btn" aria-label="Удалить клиента" data-client-remove="${safe(c.id)}" ${visits.length?'disabled title="Есть посещения"':''}>${icon('trash-2',16)}</button></div></article>`;
+      return `<article class="client-card"><div class="client-avatar">${c.photo ? imageMarkup(c.photo,'client-avatar-photo','Фото клиента') : safe(c.name.slice(0,1).toUpperCase())}</div><div class="client-info"><strong>${safe(c.name)}</strong><small>${safe(clientSource(c.sourceId))}${c.phone?' · '+safe(c.phone):''}</small>${c.note?`<small>${safe(c.note)}</small>`:''}<small>${visits.length} посещений · ${money(spent)}</small></div><div class="client-actions"><button type="button" class="btn btn-outline" data-client-history="${safe(c.id)}">История</button><button type="button" class="icon-btn" aria-label="Редактировать клиента" data-client-edit="${safe(c.id)}">${icon('pencil',16)}</button><button type="button" class="icon-btn" aria-label="Удалить клиента" data-client-remove="${safe(c.id)}" ${visits.length?'disabled title="Есть посещения"':''}>${icon('trash-2',16)}</button></div></article>`;
     }).join(''):'<div class="empty">Клиенты не найдены. Добавьте первого клиента.</div>';
   }
   function openClient(client=null,fromEntry=false){
@@ -358,6 +360,8 @@
     $('client-phone').value=client?.phone||'';
     $('client-note').value=client?.note||'';
     $('client-source').value=client?.sourceId||'';
+    pendingClientPhoto=client?.photo||null;
+    showPhoto('client',pendingClientPhoto);
     updateCustomSource();
     $('client-dialog').showModal();
     $('client-name').focus();
@@ -378,7 +382,8 @@
         const existing=state.clientSources.find(s=>s.label.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'));
         sourceId=existing?.id||(await mutate('POST','/api/client-sources',{label:name})).id;
       }
-      const payload={name:$('client-name').value.trim(),phone:$('client-phone').value.trim(),note:$('client-note').value.trim(),sourceId};
+      if(photoLoading)throw Error('Фото ещё обрабатывается');
+      const payload={name:$('client-name').value.trim(),phone:$('client-phone').value.trim(),note:$('client-note').value.trim(),sourceId,photo:pendingClientPhoto};
       const result=await mutate(editingClient?'PUT':'POST',editingClient?`/api/clients/${editingClient}`:'/api/clients',payload);
       $('client-dialog').close();
       if(quickClient && $('entry-dialog').open){$('entry-client').value=result.id;}
@@ -414,6 +419,8 @@
   function updateRent() {
     const selected = $('entry-category').value;
     $('purchase-source-wrap').hidden = operationKind!=='expense' || !['materials','equipment'].includes(selected);
+    $('expense-address-wrap').hidden = operationKind!=='expense' || selected!=='other';
+    $('entry-photo-wrap').hidden = operationKind==='expense' && !['materials','equipment','other'].includes(selected);
     updatePurchaseSource();
     const rent = C.recentRent(state.entries.filter(e=>e.id!==editing), 'rent');
     $('rent-preset').hidden = operationKind!=='expense' || selected!=='rent' || rent===null;
@@ -446,6 +453,9 @@
     $('entry-time').value = entry?.time || '';
     $('entry-status').value = entry?.status || stage || 'planned';
     $('entry-note').value = entry?.note || '';
+    $('entry-address').value = entry?.address || '';
+    pendingEntryPhoto=entry?.photo||null;
+    showPhoto('entry',pendingEntryPhoto);
     $('entry-amount').value = entry ? (entry.amount/100).toFixed(2) : '';
     $('entry-category').value = entry?.categoryId || state.categories[0]?.id || '';
     const source = entry?.purchaseSource || '';
@@ -469,7 +479,11 @@
     const materialExpense = operationKind==='expense' && ['materials','equipment'].includes($('entry-category').value);
     const purchaseSource = materialExpense ? ($('purchase-source').value==='other' ? $('custom-purchase').value.trim() : $('purchase-source').value) : null;
     if(materialExpense && $('purchase-source').value==='other' && !purchaseSource){toast('Введите название магазина');return;}
-    const item = {purchaseSource: purchaseSource || null, date:$('entry-date').value,kind:operationKind,status:$('entry-status').value,clientId:operationKind==='income'?$('entry-client').value:null,time:operationKind==='income'?($('entry-time').value||null):null,amount,
+    if(photoLoading){toast('Фото ещё обрабатывается');return;}
+    const chosenCategory=operationKind==='expense' ? $('entry-category').value : null;
+    const photo=operationKind==='income'||['materials','equipment','other'].includes(chosenCategory)?pendingEntryPhoto:null;
+    const address=chosenCategory==='other' ? $('entry-address').value.trim() : '';
+    const item = {photo,address,purchaseSource: purchaseSource || null, date:$('entry-date').value,kind:operationKind,status:$('entry-status').value,clientId:operationKind==='income'?$('entry-client').value:null,time:operationKind==='income'?($('entry-time').value||null):null,amount,
       taxRate: operationKind==='income'?taxRate:0, categoryId:operationKind==='expense'?$('entry-category').value:null, note:$('entry-note').value.trim()};
     saving=true;$('save-entry').disabled=true;
     try {await mutate(editing?'PUT':'POST',editing?`/api/entries/${editing}`:'/api/entries',item);selectedDate=item.date;viewYear=Number(item.date.slice(0,4));viewMonth=Number(item.date.slice(5,7))-1;render();closeEntry();toast('Сделка сохранена');}
@@ -499,6 +513,10 @@
   $('entry-form').addEventListener('submit',handleSave);
   $('tax-select').addEventListener('change',updateTaxControl);$('custom-tax').addEventListener('input',updatePreview);$('entry-amount').addEventListener('input',updatePreview);
   $('entry-category').addEventListener('change',updateRent);
+  $('entry-photo-file').addEventListener('change',e=>handlePhotoChange('entry',e.target.files?.[0]));
+  $('client-photo-file').addEventListener('change',e=>handlePhotoChange('client',e.target.files?.[0]));
+  $('remove-entry-photo').addEventListener('click',()=>{pendingEntryPhoto=null;showPhoto('entry',null);});
+  $('remove-client-photo').addEventListener('click',()=>{pendingClientPhoto=null;showPhoto('client',null);});
   $('purchase-source').addEventListener('change',updatePurchaseSource);
   $('use-last-rent').addEventListener('click',()=>{const rent=C.recentRent(state.entries.filter(e=>e.id!==editing),'rent');if(rent!==null){$('entry-amount').value=(rent/100).toFixed(2);updatePreview();}});
   $('calendar-grid').addEventListener('click',e=>{const el=e.target.closest('[data-date]');if(!el)return;selectedDate=el.dataset.date;viewYear=Number(selectedDate.slice(0,4));viewMonth=Number(selectedDate.slice(5,7))-1;renderCalendar();openEntry();});
