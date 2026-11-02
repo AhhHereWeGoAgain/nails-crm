@@ -140,6 +140,8 @@ class Storage:
                 c.execute("ALTER TABLE entries ADD COLUMN entry_time TEXT")
             if "client_id" not in columns:
                 c.execute("ALTER TABLE entries ADD COLUMN client_id TEXT REFERENCES clients(id) ON DELETE RESTRICT")
+            if "purchase_source" not in columns:
+                c.execute("ALTER TABLE entries ADD COLUMN purchase_source TEXT")
             if "status" not in columns:
                 c.execute("ALTER TABLE entries ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'")
             for row in c.execute("""SELECT DISTINCT client_name FROM entries
@@ -186,7 +188,7 @@ class Storage:
                 "kind": r["kind"], "clientId": r["client_id"], "status": r["status"],
                 "name": r["client_name"], "amount": r["amount_kopeks"],
                 "taxRate": r["tax_rate"], "categoryId": r["category_id"],
-                "note": r["note"], "createdAt": r["created_at"], "updatedAt": r["updated_at"]}
+                "note": r["note"], "purchaseSource": r["purchase_source"], "createdAt": r["created_at"], "updatedAt": r["updated_at"]}
 
     @staticmethod
     def validate_entry(data: object) -> tuple:
@@ -201,7 +203,12 @@ class Storage:
             raise ApiError("Недопустимая стадия сделки")
         amount = valid_amount(data.get("amount"))
         note = clean_text(data.get("note", ""), "Комментарий", 1000)
+        purchase_source = data.get("purchaseSource")
+        if purchase_source is not None:
+            purchase_source = clean_text(purchase_source, "Место покупки", 100) or None
         if kind == "income":
+            if purchase_source is not None:
+                raise ApiError("Место покупки указывается только для материалов")
             name = clean_text(data.get("name", ""), "Клиент")
             client_id = data.get("clientId") or None
             if client_id is not None:
@@ -211,15 +218,17 @@ class Storage:
             rate = data.get("taxRate")
             if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate <= 100:
                 raise ApiError("Налог должен быть от 0 до 100%")
-            return (entry_date, valid_time(data.get("time")), kind, client_id, name, amount, float(rate), None, note, status)
+            return (entry_date, valid_time(data.get("time")), kind, client_id, name, amount, float(rate), None, note, status, None)
         category_id = data.get("categoryId")
         if not isinstance(category_id, str) or not category_id:
             raise ApiError("Выберите статью расходов")
-        return (entry_date, None, kind, None, "", amount, 0, category_id, note, status)
+        if category_id != "materials" and purchase_source is not None:
+            raise ApiError("Место покупки указывается только для материалов")
+        return (entry_date, None, kind, None, "", amount, 0, category_id, note, status, purchase_source)
 
     @staticmethod
     def resolve_entry_client(c: sqlite3.Connection, v: tuple) -> tuple:
-        d, t, kind, client_id, name, amount, rate, category_id, note, status = v
+        d, t, kind, client_id, name, amount, rate, category_id, note, status, purchase_source = v
         if kind == "income":
             if client_id is not None:
                 client = c.execute("SELECT name FROM clients WHERE id=?", (client_id,)).fetchone()
@@ -237,7 +246,7 @@ class Storage:
         else:
             if not c.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
                 raise ApiError("Статья расходов не найдена")
-        return (d,t,kind,client_id,name,amount,rate,category_id,note,status)
+        return (d,t,kind,client_id,name,amount,rate,category_id,note,status,purchase_source)
 
     def save_entry(self, data: object, entry_id: str | None = None) -> dict:
         values = self.validate_entry(data)
@@ -249,13 +258,13 @@ class Storage:
                 values = self.resolve_entry_client(c, values)
                 if entry_id:
                     c.execute("""UPDATE entries SET entry_date=?,entry_time=?,kind=?,client_id=?,client_name=?,
-                        amount_kopeks=?,tax_rate=?,category_id=?,note=?,status=?,updated_at=? WHERE id=?""",
+                        amount_kopeks=?,tax_rate=?,category_id=?,note=?,status=?,purchase_source=?,updated_at=? WHERE id=?""",
                         (*values, now, entry_id))
                 else:
                     entry_id = str(uuid.uuid4())
                     c.execute("""INSERT INTO entries(id,entry_date,entry_time,kind,client_id,client_name,
-                        amount_kopeks,tax_rate,category_id,note,status,created_at,updated_at)
-                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""", (entry_id,*values,now,now))
+                        amount_kopeks,tax_rate,category_id,note,status,purchase_source,created_at,updated_at)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (entry_id,*values,now,now))
                 return self.to_entry(c.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone())
             except sqlite3.IntegrityError as exc:
                 raise ApiError("Не удалось сохранить запись из-за ограничения базы") from exc
@@ -411,7 +420,7 @@ class Storage:
             for identifier,v,created,updated in entries:
                 v = self.resolve_entry_client(c,v)
                 c.execute("""INSERT INTO entries(id,entry_date,entry_time,kind,client_id,client_name,amount_kopeks,
-                             tax_rate,category_id,note,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                             tax_rate,category_id,note,status,purchase_source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (identifier,*v,created,updated))
 
 
