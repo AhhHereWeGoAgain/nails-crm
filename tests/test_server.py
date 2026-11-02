@@ -44,6 +44,58 @@ class StorageTests(unittest.TestCase):
         self.storage.replace_state(original)
         self.assertEqual(self.storage.state(), original)
 
+    def test_photos_and_other_expense_address_backup(self):
+        photo = ('data:image/png;base64,'
+                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
+                 'AAAAC0lEQVR42mP8/x8AAwMCAO+c+3sAAAAASUVORK5CYII=')
+        client = self.storage.save_client({
+            'name':'Ольга', 'phone':'', 'note':'', 'photo':photo
+        })
+        self.assertEqual(client['photo'], photo)
+        visit = self.storage.save_entry({
+            'kind':'income','date':'2026-11-03','time':'09:30',
+            'clientId':client['id'],'amount':150000,'taxRate':4,'photo':photo
+        })
+        self.assertEqual(visit['photo'], photo)
+        for category in ('materials','equipment'):
+            expense = self.storage.save_entry({
+                'kind':'expense','date':'2026-11-03','categoryId':category,
+                'amount':55000,'note':'Покупка','photo':photo,
+                'purchaseSource':'Ozon'
+            })
+            self.assertEqual(expense['photo'],photo)
+            self.assertEqual(expense['purchaseSource'],'Ozon')
+            self.assertEqual(expense['address'],'')
+        other = self.storage.save_entry({
+            'kind':'expense','date':'2026-11-03','categoryId':'other',
+            'amount':10000,'note':'Доставка','address':'ул. Ленина, 5','photo':photo
+        })
+        self.assertEqual(other['address'],'ул. Ленина, 5')
+        with self.assertRaises(ApiError):
+            self.storage.save_entry({'kind':'expense','date':'2026-11-03',
+                'categoryId':'materials','amount':100,'address':'нельзя'})
+        with self.assertRaises(ApiError):
+            self.storage.save_entry({'kind':'expense','date':'2026-11-03',
+                'categoryId':'rent','amount':100,'photo':photo})
+        with self.assertRaises(ApiError):
+            self.storage.save_client({'name':'Ошибка','photo':'data:image/svg+xml;base64,PHN2Zz4='})
+        with self.assertRaises(ApiError):
+            self.storage.save_client({'name':'Ошибка','photo':'data:image/jpeg;base64,'+'A'*400001})
+        backup = self.storage.state()
+        self.storage.replace_state(backup)
+        self.assertEqual(backup,self.storage.state())
+        # Old clients/deals without photo fields still import successfully.
+        legacy = json.loads(json.dumps(backup))
+        for client in legacy['clients']:
+            client.pop('photo',None)
+        for entry in legacy['entries']:
+            entry.pop('photo',None)
+            entry.pop('address',None)
+        self.storage.replace_state(legacy)
+        self.assertTrue(all(c['photo'] is None for c in self.storage.state()['clients']))
+        self.assertTrue(all(e['photo'] is None and not e['address']
+                            for e in self.storage.state()['entries']))
+
     def test_validation(self):
         for data in [
             {'kind':'income','date':'2026-02-29','name':'Оля','amount':100,'taxRate':4},
