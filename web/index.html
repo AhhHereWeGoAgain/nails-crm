@@ -54,12 +54,13 @@
       </section>
 
       <section id="deals-page" class="page" hidden>
-        <div class="section-head"><div><h2>Канбан сделок</h2><p class="muted">Перетаскивайте карточки между стадиями или выбирайте стадию в карточке</p></div><span class="kanban-hint"><span data-icon="mouse-pointer-click"></span> Стадия влияет на финансовый отчёт</span></div>
+        <div class="section-head"><div><h2>Канбан сделок</h2><p class="muted">На компьютере — перетаскивайте карточки; на телефоне — выбирайте стадию ниже</p></div><span class="kanban-hint"><span data-icon="mouse-pointer-click"></span> Стадия влияет на финансовый отчёт</span></div>
         <div class="deals-toolbar panel">
           <div class="deal-filters" role="group" aria-label="Фильтр сделок"><button type="button" data-deal-filter="all" class="active">Все сделки</button><button type="button" data-deal-filter="income">Клиенты</button><button type="button" data-deal-filter="expense">Расходы</button></div>
           <label class="deals-search"><span data-icon="search"></span><input type="search" id="deal-search" placeholder="Имя клиента или комментарий" autocomplete="off" aria-label="Поиск сделки"/></label>
         </div>
         <div id="deals-summary" class="deals-summary"></div>
+        <div class="mobile-stage-tabs" id="mobile-stage-tabs" role="group" aria-label="Стадии сделок"></div>
         <div class="kanban-board" id="kanban-board" aria-label="Доска сделок"></div>
       </section>
       <section id="reports-page" class="page" hidden>
